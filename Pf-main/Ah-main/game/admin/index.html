@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>ForestBrawl / Owner Command</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <main class="shell">
+    <section id="login-view" class="login-view">
+      <div class="login-art"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="grid-lines"></div><p class="eyebrow">FORESTBRAWL / PRIVATE CONTROL</p><h1>Oyunun<br><em>kalbi</em> burada.</h1><p class="muted">Canlı sunucuyu, ekonomiyi ve oyuncu deneyimini tek bir komuta merkezinden yönet.</p><div class="status-pill"><span></span> Güvenli owner bağlantısı</div></div>
+      <form id="login-form" class="login-card">
+        <div class="brand-mark">FB<span>+</span></div><p class="eyebrow">OWNER ACCESS</p><h2>Komuta merkezine gir</h2><p class="muted">Bu alan yalnızca oyun sahibi içindir.</p>
+        <label>Kullanıcı adı<input id="username" autocomplete="username" required></label>
+        <label>Şifre<input id="password" type="password" autocomplete="current-password" required></label>
+        <button class="primary" type="submit">Panele bağlan <b>→</b></button>
+        <p id="login-error" class="error"></p><p class="security-note">Oturumlar 12 saat sonra sona erer. Gerçek owner şifresi repoda tutulmaz.</p>
+      </form>
+    </section>
+    <section id="app-view" class="app-view hidden">
+      <aside class="sidebar"><div class="side-brand"><div class="brand-mark">FB<span>+</span></div><div><strong>FORESTBRAWL</strong><small>OWNER COMMAND</small></div></div><nav><button class="nav-item active" data-tab="overview"><i>◈</i> Genel bakış</button><button class="nav-item" data-tab="players"><i>♙</i> Canlı oyuncular</button><button class="nav-item" data-tab="controls"><i>⚙</i> Oyun kontrolü</button><button class="nav-item" data-tab="audit"><i>≋</i> Audit kayıtları</button></nav><div class="side-foot"><div class="owner-chip"><span class="avatar">O</span><div><strong id="owner-name">Owner</strong><small>Full access</small></div></div><button id="logout-btn" class="logout">Çıkış yap</button></div></aside>
+      <div class="workspace"><header class="topbar"><div><p class="eyebrow">COMMAND CENTER / <span id="active-tab-label">GENEL BAKIŞ</span></p><h2 id="page-title">Sunucu nabzı</h2></div><div class="top-actions"><span class="live-dot"><i></i> LIVE</span><button id="refresh-btn" class="icon-btn" title="Yenile">↻</button></div></header>
+        <div id="toast" class="toast"></div>
+        <section id="overview-tab" class="tab-panel"><div class="hero-row"><div><p class="eyebrow lime">OPERATIONS ONLINE</p><h1>Bugün oyunun <em>ritmini</em> sen belirliyorsun.</h1><p class="muted">Canlı metrikleri izle, dünya kurallarını değiştir, topluluğa anında seslen.</p></div><div class="pulse-chart"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div><div id="stats-grid" class="stats-grid"></div><div class="two-col"><article class="panel-card announcement-card"><div class="card-head"><div><p class="eyebrow">BROADCAST</p><h3>Topluluğa seslen</h3></div><span class="card-icon">✦</span></div><textarea id="announcement" maxlength="240" placeholder="Oyunculara gösterilecek duyuruyu yaz..."></textarea><div class="card-foot"><small><span id="char-count">0</span>/240 karakter</small><button id="announce-btn" class="primary small">Duyuruyu yayınla →</button></div></article><article class="panel-card quick-card"><div class="card-head"><div><p class="eyebrow">QUICK VIEW</p><h3>Sistem durumu</h3></div><span class="signal">●</span></div><div id="system-list" class="system-list"></div></article></div></section>
+        <section id="players-tab" class="tab-panel hidden"><div class="section-head"><div><p class="eyebrow lime">LIVE POPULATION</p><h1>Oyuncu akışı</h1></div><input id="player-search" class="search" placeholder="Oyuncu veya ID ara..."></div><div class="panel-card table-card"><div class="table-wrap"><table><thead><tr><th>Oyuncu</th><th>Can</th><th>Skor</th><th>Altın</th><th>Kill</th><th>Konum</th><th>Aksiyon</th></tr></thead><tbody id="players-body"></tbody></table></div></div></section>
+        <section id="controls-tab" class="tab-panel hidden"><div class="section-head"><div><p class="eyebrow lime">WORLD DESIGN</p><h1>Oyun kontrolü</h1></div></div><div class="controls-grid"><article class="panel-card config-card"><div class="card-head"><div><p class="eyebrow">RULES</p><h3>Maç kuralları</h3></div></div><label class="toggle-row"><span><b>Bakım modu</b><small>Yeni oyuncu girişini durdurur</small></span><input id="maintenance" type="checkbox"><i></i></label><label class="toggle-row"><span><b>PvP savaşı</b><small>Oyuncular arası hasarı aç/kapat</small></span><input id="pvpEnabled" type="checkbox"><i></i></label><label class="range-row"><span><b>XP çarpanı</b><strong id="xpRate-value">1x</strong></span><input id="xpRate" type="range" min="0.1" max="10" step="0.1"></label><label class="range-row"><span><b>Mob yoğunluğu</b><strong id="mobSpawnMultiplier-value">1x</strong></span><input id="mobSpawnMultiplier" type="range" min="0.1" max="5" step="0.1"></label><button id="save-config" class="primary">Ayarları canlı uygula →</button></article><article class="panel-card"><div class="card-head"><div><p class="eyebrow">DESIGN NOTES</p><h3>Komuta prensipleri</h3></div></div><div class="principles"><div><b>01</b><span>Her değişiklik server tarafında doğrulanır.</span></div><div><b>02</b><span>Oyuncu ilerlemesi owner işlemlerinden ayrıdır.</span></div><div><b>03</b><span>Her aksiyon audit kaydına düşer.</span></div></div></article></div></section>
+        <section id="audit-tab" class="tab-panel hidden"><div class="section-head"><div><p class="eyebrow lime">TRACEABILITY</p><h1>Audit kayıtları</h1></div></div><div id="audit-list" class="audit-list"></div></section>
+      </div>
+    </section>
+  </main>
+  <script src="admin.js"></script>
+</body>
+</html>
