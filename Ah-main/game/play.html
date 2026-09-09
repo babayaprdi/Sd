@@ -2388,6 +2388,120 @@ function drawSkinEyesOverlay(c, R, sk, fl) {
 
 <div id="game-ui-layer">
 
+<!-- GLOBAL ANNOUNCEMENT BANNER -->
+<style id="fb-announce-styles">
+#game-announce-banner {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-140px) scale(0.92);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10002;
+  width: min(620px, 94vw);
+  border-radius: 18px;
+  padding: 14px 20px;
+  background: rgba(8, 20, 16, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 35px rgba(16, 185, 129, 0.25);
+  transition: transform 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.35s ease;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+#game-announce-banner.show {
+  transform: translateX(-50%) translateY(0) scale(1);
+  opacity: 1;
+}
+#game-announce-banner.level-warning {
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 35px rgba(239, 68, 68, 0.3);
+  background: rgba(24, 8, 8, 0.95);
+}
+#game-announce-banner.level-event {
+  border-color: rgba(245, 158, 11, 0.7);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 35px rgba(245, 158, 11, 0.3);
+  background: rgba(24, 16, 6, 0.95);
+}
+#game-announce-banner.level-reward {
+  border-color: rgba(234, 179, 8, 0.8);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.8), 0 0 40px rgba(234, 179, 8, 0.35);
+  background: rgba(20, 18, 5, 0.95);
+}
+.announce-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.announce-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 12px;
+  padding: 6px 12px;
+  min-width: 70px;
+  flex-shrink: 0;
+}
+#game-announce-banner.level-warning .announce-badge {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.45);
+}
+#game-announce-banner.level-event .announce-badge,
+#game-announce-banner.level-reward .announce-badge {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+.announce-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+.announce-tag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #10b981;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+#game-announce-banner.level-warning .announce-tag { color: #f87171; }
+#game-announce-banner.level-event .announce-tag { color: #fbbf24; }
+#game-announce-banner.level-reward .announce-tag { color: #facc15; }
+.announce-body {
+  flex: 1;
+  min-width: 0;
+}
+.announce-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+.announce-message {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.45;
+  word-break: break-word;
+}
+</style>
+<div id="game-announce-banner">
+  <div class="announce-banner-content">
+    <div class="announce-badge" id="announce-badge">
+      <span class="announce-icon" id="announce-icon">📢</span>
+      <span class="announce-tag" id="announce-tag">DUYURU</span>
+    </div>
+    <div class="announce-body">
+      <div class="announce-title" id="announce-title">SUNUCU DUYURUSU</div>
+      <div class="announce-message" id="announce-message"></div>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST NOTIFICATION -->
 <div id="toast" style="display:none;position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(0,0,0,0.85);color:#fff;padding:8px 18px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.18);font-size:13px;font-weight:800;pointer-events:none;backdrop-filter:blur(8px);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,0.5);"></div>
 
@@ -7456,9 +7570,10 @@ if ('ontouchstart' in window || navigator.maxTouchPoints > 0) document.documentE
 // ── Toast notifications ─────────────────────────────────────────────────────
 let _toastTimer = null;
 function showToast(msg, duration, color) {
+  if (msg === undefined || msg === null || msg === 'undefined') return;
   const el = document.getElementById('toast');
   if (!el) return;
-  el.textContent = msg;
+  el.textContent = String(msg);
   el.style.setProperty('color', color || '#ffffff', 'important');
   el.style.setProperty('display', 'block', 'important');
   el.style.setProperty('opacity', '1', 'important');
@@ -7478,6 +7593,7 @@ const killFeedEl = document.getElementById('kill-feed');
 let _kfPending = [];
 let _kfRafPending = false;
 function pushKillFeed(msg) {
+  if (!msg || typeof msg !== 'string' || msg.includes('undefined')) return;
   _kfPending.push(msg);
   if (!_kfRafPending) {
     _kfRafPending = true;
@@ -7511,17 +7627,23 @@ function formatScore(score) {
 
 // Global leaderboard renderer — always available even before socket connect
 function _renderStarveLeaderboard(entries) {
-  if (!lbRowsEl) return;
+  const targetEl = lbRowsEl || document.getElementById('lb-rows');
+  if (!targetEl) return;
   if (!entries || !entries.length) {
-    lbRowsEl.innerHTML = '<div style="color:rgba(255,255,255,0.3);text-align:center;padding:6px;font-size:10px;font-style:italic">Oyuncu aranıyor...</div>';
+    targetEl.innerHTML = '<div style="color:rgba(255,255,255,0.3);text-align:center;padding:6px;font-size:10px;font-style:italic">Oyuncu aranıyor...</div>';
     return;
   }
-  const sorted = [...entries].sort((a, b) => {
+  const valid = entries.filter(Boolean);
+  const sorted = [...valid].sort((a, b) => {
     return (Number(b.gold) || 0) - (Number(a.gold) || 0) || (Number(b.score) || 0) - (Number(a.score) || 0);
   });
-  const newHtml = sorted.slice(0, 10).map((e, idx) => {
-    const isMe = e.isMe || (player && (e.name === player.name || e.id === _mySocketId));
-    const goldNum = typeof e.gold === 'number' ? e.gold : (Number(e.score) || 0);
+
+  let myIndex = sorted.findIndex(e => e.isMe || (player && (e.name === player.name || e.id === _mySocketId)));
+  const top10 = sorted.slice(0, 10);
+  const isInTop10 = myIndex >= 0 && myIndex < 10;
+
+  const renderRow = (e, rankNum, isMe) => {
+    const goldNum = isMe && player ? Math.max(player.gold || 0, typeof e.gold === 'number' ? e.gold : (Number(e.score) || 0)) : (typeof e.gold === 'number' ? e.gold : (Number(e.score) || 0));
     const pts = formatScore(goldNum);
     const safeName = String(e.name || 'Oyuncu').replace(/[<>]/g, '').slice(0, 13);
     const cosmetics = e.profileCosmetics || {};
@@ -7533,11 +7655,30 @@ function _renderStarveLeaderboard(entries) {
     const rankLabel = String(e.rankName || 'Tohum').replace(/[<>]/g, '');
     return `<div class="lb-row${isMe ? ' me' : ''}">
       <span class="lb-profile-cosmetic" data-frame="${frameId}" data-effect="${effectId}"><img src="${avatarSrc}" alt="" onerror="this.src='players/default.png'"></span>
-      <span class="lb-name">${safeName}<span class="lb-rank-name">${rankEmojis[Math.max(0, Math.min(11, Number(e.rankId) || 0))]} ${rankLabel}</span></span>
+      <span class="lb-name">${rankNum ? `<span class="lb-num" style="opacity:0.75;margin-right:3px;font-size:11px;">#${rankNum}</span>` : ''}${safeName}<span class="lb-rank-name">${rankEmojis[Math.max(0, Math.min(11, Number(e.rankId) || 0))]} ${rankLabel}</span></span>
       <span class="lb-score" style="color:#ffd700;font-weight:900;">${pts}<img class="lb-gold-icon" src="asset/gold.png" alt="Altın"></span>
     </div>`;
+  };
+
+  let rowsHtml = top10.map((e, idx) => {
+    const isMe = e.isMe || (player && (e.name === player.name || e.id === _mySocketId));
+    return renderRow(e, idx + 1, isMe);
   }).join('');
-  if (newHtml !== _lbLastHtml) { _lbLastHtml = newHtml; lbRowsEl.innerHTML = newHtml; }
+
+  if (!isInTop10 && player && !player.dead && (player.name || _mySocketId)) {
+    const myRankNum = myIndex >= 0 ? myIndex + 1 : sorted.length + 1;
+    const myEntry = myIndex >= 0 ? sorted[myIndex] : {
+      name: player.name || 'Sen',
+      gold: player.gold || 0,
+      score: player.score || 0,
+      rankId: typeof _myRankId !== 'undefined' ? _myRankId : 0,
+      rankName: typeof _myRankName !== 'undefined' ? _myRankName : 'Tohum',
+      profileCosmetics: player.profileCosmetics || {}
+    };
+    rowsHtml += `<div class="lb-separator" style="height:1px;background:rgba(255,255,255,0.18);margin:3px 0;"></div>` + renderRow(myEntry, myRankNum, true);
+  }
+
+  if (rowsHtml !== _lbLastHtml) { _lbLastHtml = rowsHtml; targetEl.innerHTML = rowsHtml; }
 }
 window._renderStarveLeaderboard = _renderStarveLeaderboard;
 
@@ -15892,11 +16033,16 @@ function initMultiplayer() {
     }
   });
 
-  _socket.on('welcome', ({ id, players: others, buildings: remoteBuildings, worldSeed, resHp, mobs, isHost: serverIsHost, bountyId: welcomeBountyId, airdrops: welcomeAirdrops }) => {
+  _socket.on('welcome', ({ id, players: others, buildings: remoteBuildings, worldSeed, resHp, mobs, isHost: serverIsHost, bountyId: welcomeBountyId, airdrops: welcomeAirdrops, announcement: welcomeAnnouncement }) => {
     _mySocketId = id;
     if (welcomeBountyId !== undefined) _bountyId = welcomeBountyId;
     if (welcomeAirdrops && Array.isArray(welcomeAirdrops)) {
       airdropsList = welcomeAirdrops.map(ad => ({ ...ad, dropY: 0, beamAlpha: 1.0, pulse: 0, shake: 0, hitFlash: 0 }));
+    }
+    if (welcomeAnnouncement) {
+      setTimeout(() => {
+        if (typeof showGameAnnouncement === 'function') showGameAnnouncement(welcomeAnnouncement);
+      }, 1200);
     }
     Object.entries(others).forEach(([pid, s]) => {
       _otherPlayers.set(pid, {
@@ -16267,10 +16413,67 @@ function initMultiplayer() {
     floatingTexts.push({ x: player.x, y: player.y - 80, text: `🔥 ${label}!`, alpha: 1, life: 70, color: '#ffdd00', big: true });
   });
 
-  // ── Server announcements — tips + events ──────────────────────────────────
-  _socket.on('server_announce', ({ msg }) => {
-    pushKillFeed(`📢 ${msg}`);
-    showToast(msg, 5000, '#4488ff');
+  // ── Server announcements — tips + events + owner broadcasts ────────────────
+  let _announceHideTimer = null;
+  function showGameAnnouncement(data) {
+    if (!data) return;
+    const msg = typeof data === 'string' ? data : (data.message || data.msg || data.text || '');
+    if (!msg || msg === 'undefined') return;
+    const level = (data && data.level) || 'info';
+    const rawTitle = data && data.title;
+    const title = (rawTitle || (level === 'warning' ? 'SUNUCU UYARISI' : level === 'event' ? 'ÖZEL ETKİNLİK' : level === 'reward' ? 'ÖDÜL BİLDİRİMİ' : 'SUNUCU DUYURUSU')).toUpperCase();
+    const icon = (data && data.icon) || (level === 'warning' ? '⚠️' : level === 'event' ? '🔥' : level === 'reward' ? '🎁' : '📢');
+    const banner = document.getElementById('game-announce-banner');
+    if (banner) {
+      banner.className = `show level-${level}`;
+      const elTitle = document.getElementById('announce-title');
+      const elMsg = document.getElementById('announce-message');
+      const elIcon = document.getElementById('announce-icon');
+      const elTag = document.getElementById('announce-tag');
+      if (elTitle) elTitle.textContent = title;
+      if (elMsg) elMsg.textContent = msg;
+      if (elIcon) elIcon.textContent = icon;
+      if (elTag) elTag.textContent = level === 'warning' ? 'UYARI' : level === 'event' ? 'ETKİNLİK' : level === 'reward' ? 'ÖDÜL' : 'DUYURU';
+      if (_announceHideTimer) clearTimeout(_announceHideTimer);
+      _announceHideTimer = setTimeout(() => {
+        banner.classList.remove('show');
+      }, 7500);
+    }
+    pushKillFeed(`${icon} ${msg}`);
+    showToast(msg, 5000, level === 'warning' ? '#ff4444' : level === 'event' ? '#ffaa00' : '#44aaff');
+    try {
+      if (typeof playSound === 'function') {
+        if (level === 'warning') playSound(220, 0.25, 'sawtooth', 0.35);
+        else if (level === 'event' || level === 'reward') {
+          playSound(587.33, 0.15, 'triangle', 0.28);
+          setTimeout(() => playSound(880, 0.2, 'triangle', 0.28), 130);
+        } else {
+          playSound(520, 0.15, 'sine', 0.22);
+          setTimeout(() => playSound(659.25, 0.18, 'sine', 0.22), 110);
+        }
+      }
+    } catch (_) {}
+  }
+
+  _socket.on('server_announce', (data) => {
+    showGameAnnouncement(data);
+  });
+
+  _socket.on('server_announce_clear', () => {
+    const banner = document.getElementById('game-announce-banner');
+    if (banner) banner.classList.remove('show');
+  });
+
+  _socket.on('owner_config_updated', ({ pvpEnabled, maintenance }) => {
+    if (maintenance) {
+      showGameAnnouncement({ title: 'SUNUCU BAKIMI', message: 'Sunucu bakım moduna alındı. Yeni oyuncu girişi kapatıldı.', level: 'warning' });
+    } else if (pvpEnabled !== undefined) {
+      showGameAnnouncement({
+        title: 'OYUN KURALI GÜNCELLEMESİ',
+        message: pvpEnabled ? 'PvP modu açıldı! Tüm oyuncular birbirine saldırabilir.' : 'PvP modu kapatıldı! Oyuncular arası hasar devredışı.',
+        level: pvpEnabled ? 'event' : 'info'
+      });
+    }
   });
 
   // ── Building limit reached — server refused placement ─────────────────────
@@ -16304,8 +16507,9 @@ function initMultiplayer() {
   _socket.on('bounty_update', ({ id, name }) => {
     const wasBounty = _bountyId;
     _bountyId = id || null;
+    const targetName = name || 'Hedef Oyuncu';
     if (_bountyId && _bountyId !== _mySocketId) {
-      showToast(`🏆 YENİ HEDEF: ${name} — öldür +300 puan!`, 5000, '#ffd700');
+      showToast(`🏆 YENİ HEDEF: ${targetName} — öldür +300 puan!`, 5000, '#ffd700');
     } else if (_bountyId === _mySocketId) {
       showToast(`👑 Sen hedef oldun! Herkese karşı savaş!`, 5000, '#ff4444');
     } else if (wasBounty) {
@@ -16553,11 +16757,11 @@ function initMultiplayer() {
     if (acceptsHp) player.hp = Math.max(0, s.hp);
     if (player.hp <= 0 && !_isDying) die();
     if (typeof s.sc === 'number') player.score = Math.max(player.score || 0, s.sc);
-    // Gold from server if more authoritative
-    if (typeof s.g === 'number') player.gold = Math.max(0, s.g);
-    if (typeof s.wood === 'number') player.wood = Math.max(0, s.wood);
-    if (typeof s.stone === 'number') player.stone = Math.max(0, s.stone);
-    if (typeof s.apples === 'number') player.apples = Math.max(0, s.apples);
+    // Gold and survival resources from server: monotonic protection against packet race
+    if (typeof s.g === 'number') player.gold = Math.max(player.gold || 0, s.g);
+    if (typeof s.wood === 'number') player.wood = Math.max(player.wood || 0, s.wood);
+    if (typeof s.stone === 'number') player.stone = Math.max(player.stone || 0, s.stone);
+    if (typeof s.apples === 'number') player.apples = Math.max(player.apples || 0, s.apples);
     updateUI();
     // Reconcile if position diverges significantly (e.g. server collision push or lag spike)
     if (typeof s.x === 'number' && typeof s.y === 'number' && !player.dead && !_isDying) {
@@ -16580,11 +16784,13 @@ function initMultiplayer() {
   // Server-authoritative live leaderboard (broadcast every 2s)
   _socket.on('live_lb', (entries) => {
     if (!Array.isArray(entries)) return;
-    var _lbSig = entries.map(e => e.name + ':' + (e.gold||e.score||0) + ':' + JSON.stringify(e.profileCosmetics || {})).join('|');
-    if (lbRowsEl._lastSig === _lbSig) return;
-    lbRowsEl._lastSig = _lbSig;
-    _liveLeaderboardEntries = entries;
-    _renderStarveLeaderboard(entries);
+    const valid = entries.filter(Boolean);
+    const targetEl = lbRowsEl || document.getElementById('lb-rows');
+    var _lbSig = valid.map(e => String(e.name || '') + ':' + (e.gold ?? e.score ?? 0) + ':' + JSON.stringify(e.profileCosmetics || {})).join('|');
+    if (targetEl && targetEl._lastSig === _lbSig) return;
+    if (targetEl) targetEl._lastSig = _lbSig;
+    _liveLeaderboardEntries = valid;
+    _renderStarveLeaderboard(valid);
   });
 
   // Server tells us a trap was triggered
@@ -16706,9 +16912,9 @@ function initMultiplayer() {
     const isMe = id === _mySocketId;
     if (!isMe) {
       const op = _otherPlayers.get(id);
-      if (op) { op._chatMsg = msg; op._chatExpiry = Date.now() + 4500; }
+      if (op) { op._chatMsg = msg || ''; op._chatExpiry = Date.now() + 4500; }
     }
-    pushKillFeed(`💬 ${name}: ${msg}`);
+    if (msg) pushKillFeed(`💬 ${name || 'Oyuncu'}: ${msg}`);
   });
 
   _socket.on('quick_chat', ({ name, id, idx, x, y }) => {
@@ -16740,11 +16946,38 @@ function initMultiplayer() {
     }
   });
 
-  _socket.on('res_reward', ({ wood = 0, stone = 0, gold = 0, apples = 0 }) => {
+  _socket.on('res_reward', (data = {}) => {
+    const { wood = 0, stone = 0, gold = 0, apples = 0, score, gainedWood = 0, gainedStone = 0, gainedGold = 0, gainedApples = 0, gainedHp = 0, gainedXp = 0, resX, resY, destroyed } = data;
     player.wood = Math.max(0, Number(wood) || 0);
     player.stone = Math.max(0, Number(stone) || 0);
-    player.gold = Math.max(0, Number(gold) || 0);
+    player.gold = Math.max(player.gold || 0, Number(gold) || 0);
     player.apples = Math.max(0, Number(apples) || 0);
+    if (typeof score === 'number') player.score = Math.max(player.score || 0, score);
+    if (gainedHp > 0) { player.hp = Math.min(player.maxHp, player.hp + gainedHp); updateHpBar(); }
+    if (gainedXp > 0) { player.xp += scaledXpGain(gainedXp); updateXP(); }
+
+    const fxX = typeof resX === 'number' ? resX : player.x;
+    const fxY = typeof resY === 'number' ? resY - 35 : player.y - 40;
+    const ftParts = [];
+    if (gainedWood > 0) { ftParts.push(`+${gainedWood}🪵`); _trackMission('m2', gainedWood); if (window._updateQuestProgress) window._updateQuestProgress('wood', gainedWood); }
+    if (gainedStone > 0) { ftParts.push(`+${gainedStone}🪨`); if (window._updateQuestProgress) window._updateQuestProgress('stone', gainedStone); }
+    if (gainedGold > 0) { ftParts.push(`+${gainedGold}💰`); if (window._updateQuestProgress) window._updateQuestProgress('gold', gainedGold); }
+    if (gainedApples > 0) { ftParts.push(`+${gainedApples}🍎`); }
+    if (gainedHp > 0) { ftParts.push(`+${gainedHp}💚`); }
+    if (gainedXp > 0) { ftParts.push(`+${gainedXp}✨XP`); }
+    if (destroyed) { ftParts.push('💥 KIRILDI!'); }
+
+    if (ftParts.length && floatingTexts.length < 25) {
+      floatingTexts.push({
+        x: fxX + (Math.random() - 0.5) * 24,
+        y: fxY,
+        text: ftParts.join(' '),
+        alpha: 1,
+        life: 38,
+        color: destroyed ? '#ffd700' : '#c8f5a0',
+        big: Boolean(destroyed)
+      });
+    }
     updateUI();
   });
 

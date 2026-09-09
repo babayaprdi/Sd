@@ -215,6 +215,29 @@ function saveAdminConfig() {
 }
 loadAdminConfig();
 loadOwnerAudit();
+const bannedList = new Set();
+function loadBannedList() {
+  if (!sqliteDb) return;
+  try {
+    const row = sqliteDb.prepare('SELECT state_json FROM game_state WHERE state_key = ?').get('banned_list');
+    if (!row) return;
+    const saved = JSON.parse(row.state_json);
+    if (Array.isArray(saved)) saved.forEach(item => bannedList.add(String(item)));
+  } catch (_) {}
+}
+function saveBannedList() {
+  if (!sqliteDb) return false;
+  try {
+    sqliteDb.prepare('INSERT INTO game_state (state_key, state_json, updated_at) VALUES (?, ?, ?) ON CONFLICT(state_key) DO UPDATE SET state_json = excluded.state_json, updated_at = excluded.updated_at').run('banned_list', JSON.stringify([...bannedList]), Date.now());
+    return true;
+  } catch (_) { return false; }
+}
+loadBannedList();
+function isClientBanned(clientKey, username) {
+  if (clientKey && bannedList.has(clientKey)) return true;
+  if (username && bannedList.has(usernameKey(username))) return true;
+  return false;
+}
 const authSecret = process.env.AUTH_SECRET || crypto.createHash('sha256').update(`forestbrawl:${path.resolve(databaseFile)}`).digest('hex');
 if (!process.env.AUTH_SECRET) console.warn('[Security] AUTH_SECRET is not set; using a stable development secret. Set AUTH_SECRET in production.');
 function normalizeAllowedOrigin(origin) {
@@ -957,7 +980,7 @@ function recordDeathScore(name, score, gold, kills, timeAlive, userObj, updateUs
   if (!accountData.leaderboard) accountData.leaderboard = {};
   const leadKey = user ? usernameKey(user.username) : usernameKey(cleanName);
   const prev = accountData.leaderboard[leadKey];
-  const userXp = user ? user.xp : (prev ? prev.score : numScore);
+  const userXp = user ? (user.xp || 0) : (prev ? (prev.xp || 0) : 0);
   const rInfo = rankInfo(userXp);
 
   const highestScore = prev ? Math.max(prev.score || 0, numScore) : numScore;
@@ -1148,11 +1171,42 @@ async function handleApi(request, response, requestPath) {
     const session = ownerRequired(request, response);
     if (!session) return true;
     const registeredUsers = Object.values(accountData.users || {});
+    const mem = process.memoryUsage();
     sendJson(response, 200, {
-      stats: { online: players.size, buildings: buildings.size, mobs: mobs.size, registeredUsers: registeredUsers.length, clans: clans.size, database: Boolean(sqliteDb), maintenance: adminConfig.maintenance },
-      players: [...players.values()].map(player => ({ id: player.id, name: player.name || 'Oyuncu', hp: Number(player.hp || 0), score: Number(player.score || 0), gold: Number(player.gold || 0), kills: Number(player.kills || 0), x: Math.round(Number(player.x || 0)), y: Math.round(Number(player.y || 0)), skin: player.skin || 'default' })),
+      stats: {
+        online: players.size,
+        buildings: buildings.size,
+        mobs: mobs.size,
+        registeredUsers: registeredUsers.length,
+        clans: clans.size,
+        parties: parties.size,
+        database: Boolean(sqliteDb),
+        maintenance: adminConfig.maintenance,
+        pvpEnabled: adminConfig.pvpEnabled,
+        uptimeSec: Math.floor(process.uptime()),
+        ramMb: Math.round(mem.rss / 1024 / 1024),
+        heapMb: Math.round(mem.heapUsed / 1024 / 1024),
+        bannedCount: bannedList.size
+      },
+      players: [...players.values()].map(player => ({
+        id: player.id,
+        name: player.name || 'Oyuncu',
+        hp: Number(player.hp || 0),
+        maxHp: Number(player.maxHp || 250),
+        score: Number(player.score || 0),
+        gold: Number(player.gold || 0),
+        xp: Number(player.xp || 0),
+        kills: Number(player.kills || 0),
+        x: Math.round(Number(player.x || 0)),
+        y: Math.round(Number(player.y || 0)),
+        skin: player.skin || 'default',
+        frozen: Boolean(player._ownerFrozen),
+        clanTag: player.clanTag || '',
+        team: player.team || ''
+      })),
       config: adminConfig,
-      audit: ownerAuditLog.slice(0, 30)
+      audit: ownerAuditLog.slice(0, 50),
+      banned: [...bannedList]
     });
     return true;
   }
@@ -1160,10 +1214,78 @@ async function handleApi(request, response, requestPath) {
     const session = ownerRequired(request, response);
     if (!session) return true;
     const query = String(new URL(request.url || '/', 'http://localhost').searchParams.get('q') || '').trim().toLowerCase();
-    const users = Object.values(accountData.users || {}).filter(user => !query || `${user.username} ${user.email || ''}`.toLowerCase().includes(query)).slice(0, 100).map(user => ({
-      id: user.id, username: user.username, email: user.email || '', xp: Number(user.xp || 0), coins: Number(user.coins || user.gold || 0), kills: Number(user.kills || 0), deaths: Number(user.deaths || 0), gamesPlayed: Number(user.gamesPlayed || user.games || 0), ownedItems: Array.isArray(user.ownedItems) ? user.ownedItems.length : 0, lastLoginAt: user.lastLoginAt || null
+    const users = Object.values(accountData.users || {}).filter(user => !query || `${user.username} ${user.email || ''}`.toLowerCase().includes(query)).slice(0, 200).map(user => ({
+      id: user.id, username: user.username, email: user.email || '', xp: Number(user.xp || 0), coins: Number(user.coins || user.gold || 0), kills: Number(user.kills || 0), deaths: Number(user.deaths || 0), gamesPlayed: Number(user.gamesPlayed || user.games || 0), ownedItems: Array.isArray(user.ownedItems) ? user.ownedItems.length : 0, lastLoginAt: user.lastLoginAt || null, createdAt: user.createdAt || null
     }));
     sendJson(response, 200, { users });
+    return true;
+  }
+  if (requestPath === '/api/owner/user-edit' && request.method === 'POST') {
+    const session = ownerRequired(request, response);
+    if (!session) return true;
+    let body;
+    try { body = await readJson(request); } catch (_) { sendJson(response, 400, { error: 'Geçersiz istek.' }); return true; }
+    const targetId = Number(body.userId);
+    const targetUsername = String(body.username || '').trim();
+    const user = Object.values(accountData.users || {}).find(u => u.id === targetId || usernameKey(u.username) === usernameKey(targetUsername));
+    if (!user) { sendJson(response, 404, { error: 'Kullanıcı bulunamadı.' }); return true; }
+    if (body.action === 'delete') {
+      const uKey = usernameKey(user.username);
+      delete accountData.users[uKey];
+      saveAccountData(true);
+      ownerAudit('user_deleted', { username: session.username, targetUser: user.username });
+      sendJson(response, 200, { ok: true, deleted: true });
+      return true;
+    }
+    if (body.coins !== undefined) {
+      user.coins = Math.max(0, Math.min(100000000, Number(body.coins) || 0));
+      user.gold = user.coins;
+    }
+    if (body.xp !== undefined) {
+      user.xp = Math.max(0, Math.min(100000000, Number(body.xp) || 0));
+      user.rankId = rankInfo(user.xp).rankId;
+    }
+    if (body.password && String(body.password).length >= 4) {
+      const passObj = hashPassword(String(body.password));
+      user.hash = passObj.hash;
+      user.salt = passObj.salt;
+    }
+    saveAccountData(true);
+    ownerAudit('user_updated', { username: session.username, targetUser: user.username, coins: user.coins, xp: user.xp });
+    sendJson(response, 200, { ok: true, user: publicUser(user) });
+    return true;
+  }
+  if (requestPath === '/api/owner/ban-list' && request.method === 'GET') {
+    const session = ownerRequired(request, response);
+    if (!session) return true;
+    sendJson(response, 200, { banned: [...bannedList] });
+    return true;
+  }
+  if (requestPath === '/api/owner/ban' && request.method === 'POST') {
+    const session = ownerRequired(request, response);
+    if (!session) return true;
+    let body;
+    try { body = await readJson(request); } catch (_) { sendJson(response, 400, { error: 'Geçersiz istek.' }); return true; }
+    const target = String(body.target || '').trim();
+    if (!target) { sendJson(response, 400, { error: 'Hedef belirtilmedi.' }); return true; }
+    if (body.action === 'unban') {
+      bannedList.delete(target);
+      bannedList.delete(usernameKey(target));
+      saveBannedList();
+      ownerAudit('unbanned', { username: session.username, target });
+      sendJson(response, 200, { ok: true, banned: [...bannedList] });
+      return true;
+    }
+    bannedList.add(target);
+    saveBannedList();
+    ownerAudit('banned', { username: session.username, target });
+    for (const [sId, p] of players) {
+      if (p.name && (p.name.toLowerCase() === target.toLowerCase() || usernameKey(p.name) === usernameKey(target))) {
+        const s = io.sockets.sockets.get(sId);
+        s?.disconnect(true);
+      }
+    }
+    sendJson(response, 200, { ok: true, banned: [...bannedList] });
     return true;
   }
   if (requestPath === '/api/cosmetics/catalog' && request.method === 'GET') {
@@ -1227,12 +1349,33 @@ async function handleApi(request, response, requestPath) {
     if (!session) return true;
     let body;
     try { body = await readJson(request); } catch (_) { sendJson(response, 400, { error: 'Geçersiz duyuru.' }); return true; }
-    const message = String(body.message || '').trim().slice(0, 240);
+    if (body.clear) {
+      adminConfig.announcement = '';
+      saveAdminConfig();
+      ownerAudit('announcement_cleared', { username: session.username });
+      io.emit('server_announce_clear', {});
+      sendJson(response, 200, { ok: true, cleared: true });
+      return true;
+    }
+    const message = String(body.message || '').trim().slice(0, 300);
     if (!message) { sendJson(response, 400, { error: 'Duyuru boş olamaz.' }); return true; }
+    const title = String(body.title || 'FORESTBRAWL DUYURUSU').trim().slice(0, 60);
+    const level = ['info', 'warning', 'event', 'reward'].includes(body.level) ? body.level : 'info';
+    const sound = ['bell', 'horn', 'fanfare', 'siren', 'none'].includes(body.sound) ? body.sound : 'bell';
     adminConfig.announcement = message;
-    ownerAudit('announcement_sent', { username: session.username, message });
-    io.emit('server_announce', { message, from: 'OWNER', at: Date.now() });
-    sendJson(response, 200, { ok: true });
+    saveAdminConfig();
+    ownerAudit('announcement_sent', { username: session.username, message, title, level, sound });
+    io.emit('server_announce', {
+      message,
+      msg: message,
+      text: message,
+      title,
+      level,
+      sound,
+      from: session.username.toUpperCase(),
+      at: Date.now()
+    });
+    sendJson(response, 200, { ok: true, message, title, level });
     return true;
   }
   if (requestPath === '/api/owner/player-action' && request.method === 'POST') {
@@ -1243,14 +1386,53 @@ async function handleApi(request, response, requestPath) {
     const playerId = String(body.playerId || '');
     const player = players.get(playerId);
     const action = String(body.action || '');
-    if (!player || !['kick', 'freeze', 'unfreeze', 'heal', 'kill'].includes(action)) { sendJson(response, 404, { error: 'Oyuncu veya işlem bulunamadı.' }); return true; }
+    if (!player || !['kick', 'freeze', 'unfreeze', 'heal', 'kill', 'give_gold', 'give_xp', 'teleport', 'damage', 'ban'].includes(action)) { sendJson(response, 404, { error: 'Oyuncu veya işlem bulunamadı.' }); return true; }
     const targetSocket = io.sockets.sockets.get(playerId);
     if (action === 'kick') targetSocket?.disconnect(true);
     if (action === 'freeze') { player._ownerFrozen = true; player.vx = 0; player.vy = 0; }
     if (action === 'unfreeze') player._ownerFrozen = false;
     if (action === 'heal') { player.hp = player.maxHp || 250; targetSocket?.emit('self_state', { hp: player.hp, hpSeq: player.hpSeq || 0, hpAt: Date.now() }); }
     if (action === 'kill') { player.hp = 0; onPlayerDeath(playerId); targetSocket?.emit('player_take_damage', { id: playerId, hp: 0, dmg: player.maxHp || 250, sourceName: 'Owner' }); }
-    ownerAudit('player_action', { username: session.username, playerId, action });
+    if (action === 'damage') {
+      const dmg = Math.max(1, Math.min(player.hp || 250, Number(body.amount) || 50));
+      player.hp = Math.max(0, (player.hp || 250) - dmg);
+      targetSocket?.emit('player_take_damage', { id: playerId, hp: player.hp, dmg, sourceName: 'Owner' });
+      if (player.hp <= 0) onPlayerDeath(playerId);
+    }
+    if (action === 'give_gold') {
+      const amount = Math.max(1, Math.min(1000000, Number(body.amount) || 1000));
+      player.gold = (player.gold || 0) + amount;
+      if (player._authUser) { player._authUser.coins = (player._authUser.coins || 0) + amount; player._authUser.gold = player._authUser.coins; saveAccountData(true); }
+      targetSocket?.emit('self_state', { g: player.gold, sc: player.score });
+      targetSocket?.emit('server_announce', { message: `🎁 Kurucu sana +${amount.toLocaleString('tr-TR')} Altın verdi!`, msg: `🎁 Kurucu sana +${amount.toLocaleString('tr-TR')} Altın verdi!`, text: `🎁 Kurucu sana +${amount.toLocaleString('tr-TR')} Altın verdi!`, level: 'reward', title: 'KURUCU ÖDÜLÜ' });
+    }
+    if (action === 'give_xp') {
+      const amount = Math.max(1, Math.min(1000000, Number(body.amount) || 1000));
+      player.xp = (player.xp || 0) + amount;
+      if (player._authUser) { player._authUser.xp = (player._authUser.xp || 0) + amount; player._authUser.rankId = rankInfo(player._authUser.xp).rankId; saveAccountData(true); }
+      targetSocket?.emit('self_state', { xp: player.xp });
+      targetSocket?.emit('server_announce', { message: `⭐ Kurucu sana +${amount.toLocaleString('tr-TR')} XP verdi!`, msg: `⭐ Kurucu sana +${amount.toLocaleString('tr-TR')} XP verdi!`, text: `⭐ Kurucu sana +${amount.toLocaleString('tr-TR')} XP verdi!`, level: 'reward', title: 'KURUCU ÖDÜLÜ' });
+    }
+    if (action === 'teleport') {
+      const targetX = Math.max(-7000, Math.min(7000, Number(body.x) || 0));
+      const targetY = Math.max(-7000, Math.min(7000, Number(body.y) || 0));
+      player.x = targetX;
+      player.y = targetY;
+      player.vx = 0;
+      player.vy = 0;
+      targetSocket?.emit('pos_correction', { x: targetX, y: targetY });
+      targetSocket?.emit('self_state', { x: targetX, y: targetY });
+    }
+    if (action === 'ban') {
+      const clientIp = requestClientKey(targetSocket?.request || { headers: {}, socket: targetSocket?.conn?.transport?.socket });
+      bannedList.add(playerId);
+      if (player.name) bannedList.add(usernameKey(player.name));
+      if (clientIp && clientIp !== 'unknown') bannedList.add(clientIp);
+      saveBannedList();
+      targetSocket?.emit('server_announce', { message: 'Sunucudan yasaklandınız (Banned).', msg: 'Sunucudan yasaklandınız (Banned).', text: 'Sunucudan yasaklandınız (Banned).', level: 'warning', title: 'YASAKLANDINIZ' });
+      targetSocket?.disconnect(true);
+    }
+    ownerAudit('player_action', { username: session.username, playerId, playerName: player.name, action, amount: body.amount });
     sendJson(response, 200, { ok: true, action, playerId });
     return true;
   }
@@ -2536,9 +2718,33 @@ setInterval(() => {
   io.emit('thor_lightning', { strikes: strikes.slice(0, 32), at: now });
 }, 700);
 
-// Periodic self_state confirmation (1Hz) to confirm server stats and reconcile any edge-case desync
+// Periodic server loop (1Hz): Windmill generation, stats confirmation and reconciliation
 setInterval(() => {
   if (players.size === 0) return;
+
+  // 1. Authoritative Windmill (type === 4) Tick: generate +15 gold and tier score every second
+  if (buildings.size > 0) {
+    const WINDMILL_SCORES = [10, 22, 50, 110, 220, 500];
+    for (const b of buildings.values()) {
+      if (Number(b.type) === 4 && (b.hp === undefined || b.hp > 0)) {
+        const owner = players.get(b.ownerId);
+        if (owner && (owner.hp ?? 0) > 0) {
+          const wTier = Math.min(5, Math.max(0, Number(b.tier) || 0));
+          const wGold = 15;
+          const wScore = WINDMILL_SCORES[wTier] || 10;
+          owner.gold = (owner.gold || 0) + wGold;
+          owner.score = (owner.score || 0) + wScore;
+          if (owner._authUser) {
+            owner._authUser.coins = (owner._authUser.coins || 0) + wGold;
+            owner._authUser.gold = owner._authUser.coins;
+            owner._authUser.score = Math.max(owner._authUser.score || 0, owner.score);
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Periodic self_state confirmation (1Hz)
   for (const [id, p] of players) {
     if (!p || (p.hp ?? 0) <= 0) continue;
     const s = io.sockets.sockets.get(id);
@@ -2555,13 +2761,14 @@ setInterval(() => {
   if (players.size === 0) return;
   updateBounty();
   const list = [...players.values()]
+    .filter(p => p && p.id && io.sockets.sockets.get(p.id)?.connected)
     .map(p => ({
       id: p.id,
       name: p.name || 'forestbrawl',
       xp: Number(p.xp ?? p._authUser?.xp ?? 0),
       rankId: rankInfo(Number(p.xp ?? p._authUser?.xp ?? 0)).visualRankId,
       rankName: rankInfo(Number(p.xp ?? p._authUser?.xp ?? 0)).name,
-      score: Number(p.gold ?? 0),
+      score: Number(p.score ?? p.gold ?? 0),
       gold: Number(p.gold ?? 0),
       kills: p.kills || 0,
       profileCosmetics: p._authUser ? {
@@ -2570,7 +2777,7 @@ setInterval(() => {
         frameId: p._authUser.equippedItems?.profil_cerceve || 'frame_woodland'
       } : (p.profileCosmetics || { avatarId: 'wolf', effectId: 'effect_none', frameId: 'frame_woodland' })
     }))
-    .sort((a, b) => (b.gold - a.gold) || (b.xp - a.xp) || (b.score - a.score))
+    .sort((a, b) => (b.gold - a.gold) || (b.score - a.score) || (b.xp - a.xp))
     .slice(0, 10);
   io.emit('live_lb', list);
 }, 2000);
@@ -2583,16 +2790,15 @@ setInterval(() => {
   }
 }, 30000);
 
-// Auto-cleanup ONLY when socket is disconnected or player is dead.
-// Never delete buildings or kick when player simply switches tabs!
+// Auto-cleanup ONLY when socket is actually disconnected.
+// Never delete connected players even if they are in death/respawn screen!
 setInterval(() => {
   if (players.size === 0) return;
   const now = Date.now();
   for (const [id, player] of players) {
     const socket = io.sockets.sockets.get(id);
     const isDisconnected = !socket || !socket.connected;
-    const isDead = (player.hp ?? 0) <= 0;
-    if (isDead || (isDisconnected && (now - (player.stateAt || now) > 60000))) {
+    if (isDisconnected && (now - (player.stateAt || now) > 60000)) {
       onPlayerDeath(id);
       players.delete(id);
       io.emit('player_dead', { id });
@@ -2603,6 +2809,12 @@ setInterval(() => {
 }, 3000);
 
 io.on('connection', (socket) => {
+  const clientIp = requestClientKey(socket.request || { headers: {}, socket: socket.conn?.transport?.socket });
+  if (isClientBanned(clientIp, null)) {
+    socket.emit('server_announce', { message: 'Sunucudan yasaklandınız (Banned).', msg: 'Sunucudan yasaklandınız (Banned).', text: 'Sunucudan yasaklandınız (Banned).', level: 'warning', title: 'YASAKLANDINIZ' });
+    socket.disconnect(true);
+    return;
+  }
   socket.emit('online_count', io.engine.clientsCount);
 
   socket.on('spectate', () => {
@@ -2620,19 +2832,25 @@ io.on('connection', (socket) => {
       airdrops: [...airdrops.values()].map(publicAirdrop),
       bountyId: currentBountyId,
       isHost: false,
-      isSpectator: true
+      isSpectator: true,
+      announcement: adminConfig.announcement || ''
     });
     socket.emit('mob_ids', [...mobs.keys()]);
   });
 
   socket.on('join', (data = {}) => {
     const authUser = verifyToken(data.token);
+    const playerName = authUser ? authUser.username : (String(data.name || 'forestbrawl').trim().slice(0, 20) || 'forestbrawl');
+    if (isClientBanned(clientIp, playerName)) {
+      socket.emit('server_announce', { message: 'Bu hesap veya IP adresi yasaklanmıştır.', msg: 'Bu hesap veya IP adresi yasaklanmıştır.', text: 'Bu hesap veya IP adresi yasaklanmıştır.', level: 'warning', title: 'YASAKLANDINIZ' });
+      socket.disconnect(true);
+      return;
+    }
     if (adminConfig.maintenance) {
-      socket.emit('server_announce', { message: 'Sunucu bakım modunda. Birazdan tekrar deneyin.', level: 'warning' });
+      socket.emit('server_announce', { message: 'Sunucu bakım modunda. Birazdan tekrar deneyin.', msg: 'Sunucu bakım modunda. Birazdan tekrar deneyin.', text: 'Sunucu bakım modunda. Birazdan tekrar deneyin.', level: 'warning', title: 'SUNUCU BAKIMI' });
       return;
     }
     socket.data.authUser = authUser || null;
-    const playerName = authUser ? authUser.username : (String(data.name || 'forestbrawl').trim().slice(0, 20) || 'forestbrawl');
     const playerRank = authUser ? rankInfo(authUser.xp || 0) : rankInfo(Number(data.xp || 0));
     const initialScore = authUser ? Math.max(0, Number(authUser.score) || 0) : 0;
     const initialGold = authUser ? Math.max(0, Number(authUser.gold) || 0) : 100;
@@ -2707,7 +2925,8 @@ io.on('connection', (socket) => {
       mobs: visibleMobs.map(publicMob),
       airdrops: [...airdrops.values()].map(publicAirdrop),
       bountyId: currentBountyId,
-      isHost: players.size === 1
+      isHost: players.size === 1,
+      announcement: adminConfig.announcement || ''
     });
     socket.emit('mob_ids', [...state.visibleMobIds]);
     socket.broadcast.emit('player_join', { id: socket.id, state: compactFullState(state) });
@@ -2723,15 +2942,31 @@ io.on('connection', (socket) => {
     };
     onPlayerDeath(socket.id);
     if (!player) {
+      const authUser = socket.data?.authUser || null;
+      const rank = authUser ? rankInfo(authUser.xp || 0) : rankInfo(0);
       player = {
         id: socket.id,
-        name: 'Oyuncu',
+        name: authUser?.username || 'forestbrawl',
         hp: 250,
         maxHp: 250,
         score: 0,
         sc: 0,
-        gold: 0,
+        gold: authUser ? Math.max(0, Number(authUser.gold || authUser.coins) || 0) : 100,
+        xp: authUser?.xp || 0,
         kills: 0,
+        wood: 50,
+        stone: 30,
+        apples: 5,
+        skin: 'wolf',
+        rk: rank.visualRankId,
+        rankId: rank.rankId,
+        visualRankId: rank.visualRankId,
+        rankName: rank.name,
+        profileCosmetics: authUser?.equippedItems ? {
+          avatarId: authUser.equippedItems.profil_avatar || 'wolf',
+          effectId: authUser.equippedItems.profil_efekt || authUser.equippedItems.efektler || 'effect_none',
+          frameId: authUser.equippedItems.profil_cerceve || 'frame_woodland'
+        } : { avatarId: 'wolf', effectId: 'effect_none', frameId: 'frame_woodland' },
         x: spawnPt.x,
         y: spawnPt.y,
         vx: 0,
@@ -2739,7 +2974,8 @@ io.on('connection', (socket) => {
         angle: 0,
         stateSeq: 0,
         hpSeq: 0,
-        stateAt: Date.now()
+        stateAt: Date.now(),
+        _authUser: authUser
       };
       players.set(socket.id, player);
     } else {
@@ -2748,8 +2984,12 @@ io.on('connection', (socket) => {
       player.y = spawnPt.y;
       player.vx = 0;
       player.vy = 0;
-      syncLivePlayerProgress(player);
-      player.sc = player.score;
+      player.score = 0;
+      player.sc = 0;
+      player.gold = player._authUser ? Math.max(0, Number(player._authUser.gold || player._authUser.coins) || 0) : 100;
+      player.wood = 50;
+      player.stone = 30;
+      player.apples = 5;
       player.trappedBy = null;
       player.stateSeq = 0;
       player.hpSeq = 0;
@@ -3173,23 +3413,75 @@ io.on('connection', (socket) => {
     const resource = Number.isInteger(idx) ? serverResources[idx] : null;
     if (!player || !resource || resource.destroyed || player.hp <= 0) return;
     const distance = Math.hypot((Number(player.x) || 0) - resource.x, (Number(player.y) || 0) - resource.y);
-    if (distance > 260) return;
+    if (distance > 280) return;
     const now = Date.now();
-    if (now - (resource.lastHitBy.get(socket.id) || 0) < 160) return;
+    if (now - (resource.lastHitBy.get(socket.id) || 0) < 140) return;
     resource.lastHitBy.set(socket.id, now);
     const weapon = Number(player.weapon) === 2 ? 2 : 1;
     const tier = Math.max(0, Math.min(5, Number(weapon === 2 ? player.swordTier : player.axeTier) || 0));
+    const harvestMult = (weapon === 1 ? 1.5 : 1.0) * (1 + tier * 0.25);
     const damage = Math.round((weapon === 2 ? 30 : 22) * [1, 1.5, 2.2, 3.5, 5, 8][tier]);
     resource.hp = Math.max(0, resource.hp - damage);
     io.emit('res_sync', { idx, hp: resource.hp, maxHp: resource.maxHp, shake: true });
+
+    // Per-hit harvesting rewards
+    let gainedWood = 0, gainedStone = 0, gainedGold = 0, gainedApples = 0, gainedHp = 0, gainedXp = 0, gainedScore = 0;
+    switch (resource.type) {
+      case 'wood':
+        gainedWood = Math.round((10 + Math.floor(Math.random() * 6)) * harvestMult);
+        if (Math.random() < 0.28) gainedApples = 1;
+        gainedScore = Math.round(gainedWood * 0.5);
+        break;
+      case 'stone':
+        gainedStone = Math.round((10 + Math.floor(Math.random() * 6)) * harvestMult);
+        gainedScore = Math.round(gainedStone * 0.6);
+        break;
+      case 'gold':
+        gainedGold = Math.round((6 + Math.floor(Math.random() * 6)) * harvestMult);
+        gainedStone = Math.round(4 * harvestMult);
+        gainedScore = Math.round(gainedGold * 2);
+        break;
+      case 'apple':
+        gainedWood = Math.round(6 * harvestMult);
+        gainedApples = 1 + (Math.random() < 0.4 ? 1 : 0);
+        gainedScore = 15;
+        break;
+      case 'bush':
+        gainedWood = Math.round(4 * harvestMult);
+        if (Math.random() < 0.65) gainedApples = 1;
+        gainedScore = 8;
+        break;
+      case 'mushroom':
+        gainedGold = 2;
+        gainedHp = 35;
+        player.hp = Math.min(player.maxHp ?? 250, (player.hp ?? 0) + gainedHp);
+        gainedScore = 12;
+        break;
+      case 'crystal':
+        gainedXp = 45;
+        player.xp = (player.xp || 0) + gainedXp;
+        gainedScore = 30;
+        break;
+      case 'hive':
+        gainedGold = 6 + Math.floor(Math.random() * 4);
+        gainedScore = 20;
+        break;
+      default:
+        gainedWood = Math.round(5 * harvestMult);
+        break;
+    }
+
+    // Destruction bonus if HP drops to 0
     if (resource.hp <= 0) {
       resource.destroyed = true;
-      const reward = resource.type === 'wood' ? { wood: 8 } : resource.type === 'stone' ? { stone: 8 } : resource.type === 'gold' ? { gold: 4 } : resource.type === 'apple' ? { apples: 1 } : {};
-      player.wood = (player.wood || 0) + (reward.wood || 0);
-      player.stone = (player.stone || 0) + (reward.stone || 0);
-      player.gold = (player.gold || 0) + (reward.gold || 0);
-      player.apples = (player.apples || 0) + (reward.apples || 0);
-      socket.emit('res_reward', { ...reward, gold: player.gold, wood: player.wood, stone: player.stone, apples: player.apples });
+      if (resource.type === 'wood') { gainedWood += 30; gainedScore += 25; }
+      else if (resource.type === 'stone') { gainedStone += 30; gainedScore += 30; }
+      else if (resource.type === 'gold') { gainedGold += 25; gainedScore += 60; }
+      else if (resource.type === 'apple') { gainedWood += 20; gainedApples += 3; gainedScore += 35; }
+      else if (resource.type === 'bush') { gainedWood += 12; gainedApples += 2; gainedScore += 20; }
+      else if (resource.type === 'crystal') { gainedXp += 60; gainedScore += 50; player.xp = (player.xp || 0) + 60; }
+      else if (resource.type === 'mushroom') { gainedHp += 25; player.hp = Math.min(player.maxHp ?? 250, (player.hp ?? 0) + 25); }
+
       io.emit('res_sync', { idx, hp: 0, maxHp: resource.maxHp, destroyed: true });
       setTimeout(() => {
         resource.hp = resource.maxHp;
@@ -3197,6 +3489,37 @@ io.on('connection', (socket) => {
         io.emit('res_respawn', { idx, hp: resource.hp, maxHp: resource.maxHp });
       }, 30000 * Math.max(0.1, Number(adminConfig.resourceRespawnMultiplier) || 1));
     }
+
+    player.wood = (player.wood || 0) + gainedWood;
+    player.stone = (player.stone || 0) + gainedStone;
+    player.gold = (player.gold || 0) + gainedGold;
+    player.apples = (player.apples || 0) + gainedApples;
+    player.score = (player.score || 0) + gainedScore;
+
+    if (player._authUser && gainedGold > 0) {
+      player._authUser.coins = (player._authUser.coins || 0) + gainedGold;
+      player._authUser.gold = player._authUser.coins;
+      player._authUser.score = Math.max(player._authUser.score || 0, player.score);
+    }
+
+    socket.emit('res_reward', {
+      wood: player.wood,
+      stone: player.stone,
+      gold: player.gold,
+      apples: player.apples,
+      score: player.score,
+      gainedWood,
+      gainedStone,
+      gainedGold,
+      gainedApples,
+      gainedHp,
+      gainedXp,
+      gainedScore,
+      hitType: resource.type,
+      resX: resource.x,
+      resY: resource.y,
+      destroyed: resource.hp <= 0
+    });
   });
 
   socket.on('chat', (data = {}) => io.emit('chat', { name: players.get(socket.id)?.name || 'Oyuncu', msg: String(data.msg || '').slice(0, 200), id: socket.id }));
@@ -3286,7 +3609,7 @@ io.on('connection', (socket) => {
 
   const SERVER_BUILD_LIMITS = { 3: 25, 4: 7, 5: 12, 6: 8, 7: 4, 8: 35, 9: 12, 10: 4 };
   const TRAP_MAX_HP = 240;
-  const BUILD_COSTS = { 3: [20, 5, 150], 4: [40, 20, 100], 5: [10, 20, 50], 6: [30, 10, 240], 7: [60, 40, 200], 8: [30, 0, 300], 9: [80, 60, 400], 10: [25, 0, 300] };
+  const BUILD_COSTS = { 3: [20, 5, 0], 4: [40, 20, 0], 5: [10, 20, 0], 6: [30, 10, 0], 7: [60, 40, 0], 8: [30, 0, 0], 9: [80, 60, 0], 10: [25, 0, 0] };
   const BUILD_RADII = { 3: 34, 4: 44, 5: 22, 6: 32, 7: 32, 8: 20, 9: 52, 10: 28 };
 
   function normalizeBuilding(data, owner, id) {
@@ -3365,8 +3688,42 @@ io.on('connection', (socket) => {
       io.emit('trap_freed', { buildingId: id });
     }
   });
-  socket.on('build_hp_update', () => {});
-  socket.on('build_tier_update', () => {});
+  socket.on('build_hp_update', (data = {}) => {
+    const id = String(data.id || '');
+    const hp = Number(data.hp);
+    const building = buildings.get(id);
+    if (!building || !Number.isFinite(hp)) return;
+    building.hp = Math.max(0, Math.min(building.maxHp || 5000, hp));
+    io.emit('build_hp_update', { id, hp: building.hp });
+  });
+
+  socket.on('build_tier_update', (data = {}) => {
+    const id = String(data.id || '');
+    const building = buildings.get(id);
+    if (!building || building.ownerId !== socket.id) return;
+    const newTier = Math.min(5, Math.max(0, Number(data.tier) || 0));
+    const UPGRADE_SCORE = [400, 1000, 2500, 6000, 15000];
+    const prevTier = building.tier || 0;
+    if (newTier > prevTier) {
+      const cost = UPGRADE_SCORE[prevTier] || 0;
+      const player = players.get(socket.id);
+      if (player) {
+        player.score = Math.max(0, (player.score || 0) - cost);
+        if (player._authUser) {
+          player._authUser.score = Math.max(0, (player._authUser.score || 0) - cost);
+        }
+      }
+    }
+    building.tier = newTier;
+    if (Number.isFinite(Number(data.maxHp))) building.maxHp = Number(data.maxHp);
+    if (Number.isFinite(Number(data.hp))) building.hp = Number(data.hp);
+    io.emit('build_tier_update', { id, tier: building.tier, maxHp: building.maxHp, hp: building.hp });
+    const player = players.get(socket.id);
+    if (player) {
+      socket.emit('self_state', { sc: player.score, g: player.gold });
+    }
+  });
+
   socket.on('buildings_sync', () => socket.emit('buildings_sync', { buildings: Object.fromEntries(buildings) }));
 
   socket.on('clan_create', ({ name, tag, playerName } = {}) => {
