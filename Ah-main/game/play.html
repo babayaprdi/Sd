@@ -6685,6 +6685,7 @@ invSlots.forEach((slot, index) => {
   const onSelect = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    _inventorySlotPlacementGuardUntil = Date.now() + 80;
     selectInventorySlot(index);
   };
   slot.addEventListener('touchstart', onSelect, { passive: false });
@@ -7173,7 +7174,10 @@ function drawBuildingConnections(visArr) {
   }
 }
 
+let _inventorySlotPlacementGuardUntil = 0;
+
 function tryPlaceBuilding() {
+  if (Date.now() < _inventorySlotPlacementGuardUntil) return;
   if (player.weapon < 3) return;
 
   // ── BUILDING LIMIT CHECK ──
@@ -7632,7 +7636,6 @@ function setupJoy(zoneId, stickId, isMove) {
       if (doFruitUse) {
         eatApple();
       }
-      if (player.weapon >= 3 && lastDist >= 5) tryPlaceBuilding();
       _buildAimJoystickActive = false;
       player.attackHeld = false;
       if (player.weapon >= 3) player.isAttacking = false;
@@ -14101,11 +14104,6 @@ function update(timestamp = 0) {
       playSwingAnimation(player);
       _mpSwing();
     }
-  } else if (player.attackHeld && player.weapon >= 3 && !_buildAimJoystickActive) {
-    const now = Date.now();
-    if (now - (_lastBuildPlaceTime || 0) >= 160) {
-      tryPlaceBuilding();
-    }
   }
   if (player.isAttacking && player.weapon < 3) {
     checkHits();
@@ -16033,7 +16031,6 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('touchstart', _tryInitAudio, { once: true });
 canvas.addEventListener('mouseup', e => {
   if (e.button === 0) {
-    if (player.weapon >= 3) tryPlaceBuilding();
     player.attackHeld = false;
     if (player.weapon >= 3) player.isAttacking = false;
   }
@@ -16041,7 +16038,6 @@ canvas.addEventListener('mouseup', e => {
 window.addEventListener('pointerup', e => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   if (e.target && e.target.closest && e.target.closest('#joy-right')) return;
-  if (player.weapon >= 3) tryPlaceBuilding();
   player.attackHeld = false;
   if (player.weapon >= 3) player.isAttacking = false;
 });
