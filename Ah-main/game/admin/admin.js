@@ -442,7 +442,8 @@
           message,
           title,
           level: quickCategory,
-          sound: 'bell'
+          sound: 'bell',
+          durationMs: 3000
         })
       });
       sfx.gong();
