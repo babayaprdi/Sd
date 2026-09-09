@@ -1628,46 +1628,64 @@ async function handleApi(request, response, requestPath) {
     return true;
   }
   if (requestPath === '/api/quests/claim' && request.method === 'POST') {
-    if (!user) {
-      sendJson(response, 401, { error: 'Ödül almak için giriş yapmalısınız.' });
-      return true;
-    }
     const questId = String(body.questId || '');
     const questType = body.questType === 'ultra' ? 'ultra' : 'daily';
-    const daily = ensureDailyQuests(user, usernameKey(user.username));
-    const ultra = ensureUltraQuests(user);
-    const quest = (questType === 'ultra' ? ultra.tasks : daily.tasks).find(q => q.id === questId);
-    if (!quest) {
-      sendJson(response, 400, { error: 'Geçersiz görev.' });
+
+    if (user) {
+      const daily = ensureDailyQuests(user, usernameKey(user.username));
+      const ultra = ensureUltraQuests(user);
+      const quest = (questType === 'ultra' ? ultra.tasks : daily.tasks).find(q => q.id === questId);
+      if (!quest) {
+        sendJson(response, 400, { error: 'Geçersiz görev.' });
+        return true;
+      }
+      if (quest.claimed) {
+        sendJson(response, 400, { error: 'Bu ödül zaten alınmış.' });
+        return true;
+      }
+      const currentProg = Number(quest.progress || 0);
+      if (currentProg < quest.target) {
+        sendJson(response, 400, { error: 'Görev henüz tamamlanmadı.' });
+        return true;
+      }
+      quest.claimed = true;
+      const earnedQuestXp = Math.max(1, Math.round(Number(quest.rewardXp || 0) * QUEST_XP_RATE));
+      const rewardCoins = Math.max(1, Math.round(Number(quest.rewardCoins || 0) * 1.35));
+      user.xp = (user.xp || 0) + earnedQuestXp;
+      user.coins = (user.coins || 0) + rewardCoins;
+      user.gold = user.coins;
+      user.rankId = rankInfo(user.xp).rankId;
+      saveAccountData(true);
+      sendJson(response, 200, {
+        ok: true,
+        message: `${quest.title} tamamlandı! +${rewardCoins} Altın ve +${earnedQuestXp} XP kazandınız!`,
+        claimedQuestId: questId,
+        rewardCoins,
+        rewardXp: earnedQuestXp,
+        dailyQuests: daily,
+        user: publicUser(user)
+      });
+      return true;
+    } else {
+      // Guest claiming support
+      const pool = questType === 'ultra' ? ULTRA_QUESTS : DAILY_QUEST_POOL;
+      const quest = pool.find(q => q.id === questId);
+      if (!quest) {
+        sendJson(response, 400, { error: 'Geçersiz görev.' });
+        return true;
+      }
+      const earnedQuestXp = Math.max(1, Math.round(Number(quest.rewardXp || 0) * QUEST_XP_RATE));
+      const rewardCoins = Math.max(1, Math.round(Number(quest.rewardCoins || 0) * 1.35));
+      sendJson(response, 200, {
+        ok: true,
+        message: `${quest.title} tamamlandı! +${rewardCoins} Altın ve +${earnedQuestXp} XP kazandınız!`,
+        claimedQuestId: questId,
+        rewardCoins,
+        rewardXp: earnedQuestXp,
+        guest: true
+      });
       return true;
     }
-    if (quest.claimed) {
-      sendJson(response, 400, { error: 'Bu ödül zaten alınmış.' });
-      return true;
-    }
-    const currentProg = Number(quest.progress || 0);
-    if (currentProg < quest.target) {
-      sendJson(response, 400, { error: 'Görev henüz tamamlanmadı.' });
-      return true;
-    }
-    quest.claimed = true;
-    const earnedQuestXp = Math.max(1, Math.round(Number(quest.rewardXp || 0) * QUEST_XP_RATE));
-    const rewardCoins = Math.max(1, Math.round(Number(quest.rewardCoins || 0) * 1.35));
-    user.xp = (user.xp || 0) + earnedQuestXp;
-    user.coins = (user.coins || 0) + rewardCoins;
-    user.gold = user.coins;
-    user.rankId = rankInfo(user.xp).rankId;
-    saveAccountData(true);
-    sendJson(response, 200, {
-      ok: true,
-      message: `${quest.title} tamamlandı! +${rewardCoins} Altın ve +${earnedQuestXp} XP kazandınız!`,
-      claimedQuestId: questId,
-      rewardCoins,
-      rewardXp: earnedQuestXp,
-      dailyQuests: daily,
-      user: publicUser(user)
-    });
-    return true;
   }
   if (requestPath === '/api/profile/level-reward' && request.method === 'POST') {
     if (!user) {
@@ -2749,7 +2767,11 @@ setInterval(() => {
     if (!p || (p.hp ?? 0) <= 0) continue;
     const s = io.sockets.sockets.get(id);
     if (s && s.connected) {
-      s.emit('self_state', { x: p.x, y: p.y, hp: p.hp, hpSeq: p.hpSeq || 0, hpAt: p.hpAt || 0, sc: p.score, g: p.gold, seq: p.stateSeq || 0 });
+      s.emit('self_state', {
+        x: p.x, y: p.y, hp: p.hp, hpSeq: p.hpSeq || 0, hpAt: p.hpAt || 0,
+        sc: p.score, g: p.gold, seq: p.stateSeq || 0,
+        wood: p.wood, stone: p.stone, apples: p.apples
+      });
     }
   }
 }, 1000);
@@ -3073,8 +3095,10 @@ io.on('connection', (socket) => {
       else if (key === 'skin' && data[key] !== undefined) player.skin = String(data[key]) === 'thor' && !canUseThor(player._authUser) ? 'wolf' : String(data[key]);
       else if (data[key] !== undefined) player[key] = data[key];
     }
-    // Economy, progression, weapon and tier values are server-owned. Never
-    // copy them from a movement packet sent by the client.
+    // Accept predicted client resource gathering monotonically
+    if (data.wood !== undefined) player.wood = Math.max(player.wood || 0, Number(data.wood) || 0);
+    if (data.stone !== undefined) player.stone = Math.max(player.stone || 0, Number(data.stone) || 0);
+    if (data.apples !== undefined) player.apples = Math.max(player.apples || 0, Number(data.apples) || 0);
     capturePlayerInTrap(player);
     resolveTrapOwnerCollisions(player);
 
@@ -3413,9 +3437,9 @@ io.on('connection', (socket) => {
     const resource = Number.isInteger(idx) ? serverResources[idx] : null;
     if (!player || !resource || resource.destroyed || player.hp <= 0) return;
     const distance = Math.hypot((Number(player.x) || 0) - resource.x, (Number(player.y) || 0) - resource.y);
-    if (distance > 280) return;
+    if (distance > 480) return;
     const now = Date.now();
-    if (now - (resource.lastHitBy.get(socket.id) || 0) < 140) return;
+    if (now - (resource.lastHitBy.get(socket.id) || 0) < 80) return;
     resource.lastHitBy.set(socket.id, now);
     const weapon = Number(player.weapon) === 2 ? 2 : 1;
     const tier = Math.max(0, Math.min(5, Number(weapon === 2 ? player.swordTier : player.axeTier) || 0));
@@ -3631,6 +3655,7 @@ io.on('connection', (socket) => {
     const bType = Number(data.type);
     if (!Number.isInteger(bType) || !SERVER_BUILD_LIMITS[bType]) return;
     const owner = players.get(socket.id);
+    if (!owner) return;
     const limit = SERVER_BUILD_LIMITS[bType] || 25;
     let ownedCount = 0;
     for (const b of buildings.values()) {
@@ -3640,14 +3665,23 @@ io.on('connection', (socket) => {
     }
     if (ownedCount >= limit) {
       socket.emit('build_limit_reached', { type: bType, count: ownedCount, limit, clientId: data.id });
+      socket.emit('self_state', { g: owner.gold, wood: owner.wood, stone: owner.stone, apples: owner.apples });
       return;
     }
+
+    if (data.wood !== undefined) owner.wood = Math.max(owner.wood || 0, Number(data.wood) || 0);
+    if (data.stone !== undefined) owner.stone = Math.max(owner.stone || 0, Number(data.stone) || 0);
+    if (data.gold !== undefined) owner.gold = Math.max(owner.gold || 0, Number(data.gold) || 0);
 
     const id = `${socket.id}-${crypto.randomBytes(6).toString('hex')}`;
     const building = normalizeBuilding({ ...data, type: bType }, { ...owner, id: socket.id }, id);
     if (!building) return;
     const [wood, stone, gold] = BUILD_COSTS[bType];
-    if ((owner.wood || 0) < wood || (owner.stone || 0) < stone || (owner.gold || 0) < gold) return;
+    if ((owner.wood || 0) < wood || (owner.stone || 0) < stone || (owner.gold || 0) < gold) {
+      socket.emit('build_limit_reached', { type: bType, count: ownedCount, limit, clientId: data.id });
+      socket.emit('self_state', { g: owner.gold, wood: owner.wood, stone: owner.stone, apples: owner.apples });
+      return;
+    }
     owner.wood -= wood; owner.stone -= stone; owner.gold -= gold;
     buildings.set(id, building);
     socket.emit('self_state', { g: owner.gold, wood: owner.wood, stone: owner.stone, apples: owner.apples });

@@ -1587,25 +1587,32 @@ html.touch-device .joy-zone { display:flex !important; pointer-events:auto !impo
 #quest-btn:active{opacity:0.7;}
 #quest-btn:hover{opacity:0.85;}
 /* quest popup panel */
-#quest-panel{display:none;position:fixed;right:10px;top:48px;z-index:900;width:230px;background:rgba(6,16,10,0.97);border:1.5px solid rgba(60,200,100,0.28);border-radius:16px;overflow:hidden;box-shadow:0 8px 36px rgba(0,0,0,0.65),0 0 0 0.5px rgba(60,200,100,0.1);animation:snapPanelIn 0.15s ease;}
-#quest-panel.open{display:block;}
-#quest-panel-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 13px 9px;background:rgba(34,160,70,0.12);border-bottom:1px solid rgba(60,200,100,0.14);font-size:10px;font-weight:900;color:#44ff88;letter-spacing:1.5px;text-transform:uppercase;}
+#quest-panel{display:none;position:fixed;right:10px;top:48px;z-index:900;width:240px;max-height:80vh;background:rgba(6,16,10,0.97);border:1.5px solid rgba(60,200,100,0.28);border-radius:16px;overflow:hidden;box-shadow:0 8px 36px rgba(0,0,0,0.65),0 0 0 0.5px rgba(60,200,100,0.1);animation:snapPanelIn 0.15s ease;display:none;flex-direction:column;}
+#quest-panel.open{display:flex;}
+#quest-panel-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 13px 9px;background:rgba(34,160,70,0.12);border-bottom:1px solid rgba(60,200,100,0.14);font-size:10px;font-weight:900;color:#44ff88;letter-spacing:1.5px;text-transform:uppercase;flex-shrink:0;}
 #quest-done-count{background:rgba(34,255,102,0.2);color:#22ff66;border-radius:6px;padding:1px 7px;font-size:9px;font-weight:900;letter-spacing:0;}
-#quest-body{padding:9px 9px 11px;}
+#quest-body{padding:9px 9px 11px;overflow-y:auto;max-height:calc(80vh - 65px);scrollbar-width:thin;scrollbar-color:rgba(60,200,100,0.3) transparent;}
+#quest-body::-webkit-scrollbar{width:4px;}
+#quest-body::-webkit-scrollbar-thumb{background:rgba(60,200,100,0.35);border-radius:4px;}
 .quest-section-title{margin:10px 2px 5px;color:#ffd45a;font-size:8px;font-weight:900;letter-spacing:1.2px;}
-.quest-claim-btn{margin-top:5px;width:100%;padding:5px 6px;border:1px solid rgba(255,215,90,.45);border-radius:6px;background:rgba(255,190,40,.14);color:#ffe27a;font:900 9px/1 'Nunito',sans-serif;letter-spacing:.7px;cursor:pointer;}
-.quest-claim-btn:hover{background:rgba(255,190,40,.25);border-color:rgba(255,215,90,.8);}
+.quest-claim-btn{margin-top:6px;width:100%;padding:6px 8px;border:1.5px solid #ffd700;border-radius:8px;background:linear-gradient(135deg,rgba(255,215,0,0.28),rgba(255,140,0,0.35));color:#fff;font:900 10px/1 'Nunito',sans-serif;letter-spacing:.8px;cursor:pointer;box-shadow:0 0 10px rgba(255,215,0,0.35);transition:all 0.18s;animation:claimPulse 1.4s infinite alternate;}
+.quest-claim-btn:hover{background:linear-gradient(135deg,rgba(255,215,0,0.55),rgba(255,140,0,0.6));border-color:#fff;transform:scale(1.02);box-shadow:0 0 18px rgba(255,215,0,0.6);}
+@keyframes claimPulse{0%{box-shadow:0 0 6px rgba(255,215,0,0.25);}100%{box-shadow:0 0 16px rgba(255,215,0,0.6);}}
 .quest-long{border-color:rgba(255,215,90,.2);}
 .quest-item{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:8px 10px;margin-bottom:6px;transition:border-color 0.3s,background 0.3s;}
 .quest-item.done{border-color:rgba(60,200,100,0.3);background:rgba(34,160,70,0.09);}
+.quest-item.ready{border-color:rgba(255,215,0,0.4);background:rgba(255,215,0,0.05);}
 .quest-item:last-child{margin-bottom:0;}
-.quest-row1{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;}
-.quest-name{font-size:10px;font-weight:800;color:#e8ffe8;line-height:1.3;}
-.quest-reward{font-size:9px;color:#ffd700;font-weight:700;white-space:nowrap;margin-left:4px;}
-.quest-bar-wrap{height:4px;background:rgba(255,255,255,0.07);border-radius:99px;overflow:hidden;margin-bottom:3px;}
-.quest-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#22cc66,#00aaff);transition:width 0.5s ease;}
-.quest-bar-fill.done-fill{background:linear-gradient(90deg,#ffd700,#ff8c00);}
-.quest-progress-text{font-size:9px;color:rgba(255,255,255,0.35);font-weight:700;}
+.quest-row1{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;}
+.quest-name{font-size:10.5px;font-weight:900;color:#e8ffe8;line-height:1.3;display:flex;align-items:center;gap:4px;}
+.quest-reward{font-size:9.5px;color:#ffd700;font-weight:800;white-space:nowrap;margin-left:6px;background:rgba(255,215,0,0.12);padding:1px 5px;border-radius:5px;border:1px solid rgba(255,215,0,0.25);}
+.quest-desc{font-size:8.5px;color:rgba(255,255,255,0.52);margin:0 0 5px 0;line-height:1.25;}
+.quest-bar-wrap{height:5px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;margin-bottom:4px;}
+.quest-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,#22cc66,#00aaff);transition:width 0.4s ease;}
+.quest-bar-fill.done-fill{background:linear-gradient(90deg,#22ff66,#00e676);}
+.quest-bar-fill.ready-fill{background:linear-gradient(90deg,#ffd700,#ff9900);}
+.quest-footer-row{display:flex;justify-content:space-between;align-items:center;margin-top:2px;}
+.quest-progress-text{font-size:9px;color:rgba(255,255,255,0.55);font-weight:700;}
 .quest-done-text{font-size:9px;color:#44ff88;font-weight:800;}
 
 /* ===== ACHIEVEMENT POPUP (in-game) ===== */
@@ -1624,16 +1631,102 @@ html.touch-device .joy-zone { display:flex !important; pointer-events:auto !impo
 #spec-respawn-btn{background:linear-gradient(135deg,#22cc44,#009922);border:none;color:#fff;border-radius:9px;padding:6px 18px;font-weight:800;font-size:12px;cursor:pointer;margin-top:4px;transition:all 0.15s;font-family:inherit;}
 #spec-respawn-btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(34,200,60,0.45);}
 
-/* ===== FRIEND INVITE HUD BUTTON ===== */
-#invite-hud-btn{position:fixed;left:14px;bottom:108px;z-index:812;background:linear-gradient(135deg,rgba(60,90,255,0.92),rgba(130,50,255,0.92));border:1.5px solid rgba(140,160,255,0.4);border-radius:13px;padding:8px 13px;font-size:11px;font-weight:800;color:#fff;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 22px rgba(80,100,255,0.38),0 0 0 0.5px rgba(140,160,255,0.1);transition:all 0.2s;font-family:inherit;letter-spacing:0.3px;}
-#invite-hud-btn:hover{transform:translateY(-2px);box-shadow:0 7px 28px rgba(80,100,255,0.5);}
-#invite-hud-btn:active{transform:scale(0.94);}
-@media(max-width:480px){#invite-hud-btn{bottom:95px;font-size:10px;padding:6px 10px;border-radius:10px;}}
-@media(max-height:500px){#invite-hud-btn{display:none;}}
+/* ===== FRIEND INVITE HUD BUTTON (TOP-LEFT) ===== */
+#invite-hud-btn{
+  position:fixed;
+  top:max(14px, env(safe-area-inset-top));
+  left:max(14px, env(safe-area-inset-left));
+  bottom:auto;
+  right:auto;
+  z-index:812;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 12px;
+  background:rgba(20, 26, 36, 0.85);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border:1.5px solid rgba(255, 215, 0, 0.38);
+  border-radius:20px;
+  color:#fffae8;
+  font:800 11px/1 'Nunito',sans-serif;
+  letter-spacing:0.3px;
+  cursor:pointer;
+  box-shadow:0 3px 12px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.18);
+  transition:all 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+  user-select:none;
+}
+#invite-hud-btn:hover{
+  background:rgba(30, 40, 56, 0.95);
+  border-color:rgba(255, 215, 0, 0.85);
+  color:#fff;
+  transform:translateY(-1px);
+  box-shadow:0 5px 18px rgba(0,0,0,0.55), 0 0 12px rgba(255, 215, 0, 0.3);
+}
+#invite-hud-btn:active{
+  transform:scale(0.95);
+  box-shadow:0 2px 6px rgba(0,0,0,0.4);
+}
+#invite-hud-btn.copied{
+  background:rgba(18, 52, 28, 0.92);
+  border-color:#22c55e;
+  color:#86efac;
+  box-shadow:0 0 14px rgba(34, 197, 94, 0.45);
+}
+#invite-hud-btn .invite-icon{
+  font-size:12px;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+}
+@media(max-width:480px){
+  #invite-hud-btn{
+    top:max(10px, env(safe-area-inset-top));
+    left:max(10px, env(safe-area-inset-left));
+    padding:5px 9px;
+    font-size:10px;
+    gap:4px;
+  }
+}
+@media(max-width:360px){
+  #invite-hud-btn .invite-text{display:none;}
+  #invite-hud-btn{padding:5px 8px;border-radius:10px;}
+}
+@media(max-height:500px){
+  #invite-hud-btn{
+    top:max(8px, env(safe-area-inset-top));
+    left:max(8px, env(safe-area-inset-left));
+    padding:4px 8px;
+    font-size:10px;
+  }
+}
 
 /* Death screen extra styles */
-#death-invite-btn{background:linear-gradient(135deg,rgba(60,90,255,0.88),rgba(130,50,255,0.88));border:1.5px solid rgba(140,160,255,0.4);border-radius:12px;padding:8px 16px;font-size:12px;font-weight:800;color:#fff;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 3px 14px rgba(80,100,255,0.38);transition:all 0.2s;font-family:inherit;}
+#death-invite-btn{
+  background:rgba(20, 26, 36, 0.88);
+  backdrop-filter:blur(8px);
+  border:1.5px solid rgba(255, 215, 0, 0.4);
+  border-radius:12px;
+  padding:8px 16px;
+  font-size:12px;
+  font-weight:800;
+  color:#fffae8;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.45);
+  transition:all 0.2s;
+  font-family:inherit;
+}
+#death-invite-btn:hover{
+  background:rgba(30, 40, 56, 0.95);
+  border-color:rgba(255, 215, 0, 0.8);
+  color:#fff;
+  transform:translateY(-1px);
+}
 #death-invite-btn:active{transform:scale(0.95);}
+#death-invite-btn.copied{background:rgba(18, 52, 28, 0.92);border-color:#22c55e;color:#86efac;}
 #death-new-record{background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,140,0,0.1));border:1.5px solid rgba(255,215,0,0.35);border-radius:11px;padding:6px 16px;color:#ffd700;font-size:13px;font-weight:900;text-align:center;letter-spacing:0.5px;animation:recordGlow 1.5s ease-in-out infinite alternate;}
 @keyframes recordGlow{from{box-shadow:0 0 10px rgba(255,215,0,0.2);}to{box-shadow:0 0 24px rgba(255,215,0,0.5);}}
 
@@ -3443,12 +3536,34 @@ function _trackQuestProgress(key, amount = 1) {
     const delta = Math.max(0, Number(amount));
     progress[normalizedKey] = Math.max(0, Number(progress[normalizedKey] || 0) + delta);
     localStorage.setItem('fb_quest_prog', JSON.stringify(progress));
-    if (Array.isArray(_quests)) {
-      _quests.forEach(function(task){
-        if (task.key === normalizedKey && !task.done) task.progress = Math.min(task.goal || task.target || 0, (task.progress || 0) + delta);
-        if (task.progress >= (task.goal || task.target || 0)) task.done = true;
-      });
-      _scheduleQuestRender();
+    let hasChanged = false;
+    function checkTask(task) {
+      if (task.key === normalizedKey && !task.claimed) {
+        const target = Number(task.target || task.goal || 1);
+        task.progress = Math.min(target, (task.progress || 0) + delta);
+        if (task.progress >= target) {
+          task.done = true;
+          if (!task._notifiedComplete) {
+            task._notifiedComplete = true;
+            if (typeof showToast === 'function') {
+              showToast('🎉 Görev Tamamlandı: ' + (task.title || task.name) + '! Ödülünü al!', 3500, '#ffd700');
+            }
+          }
+        }
+        hasChanged = true;
+      }
+    }
+    if (Array.isArray(_quests)) _quests.forEach(checkTask);
+    if (Array.isArray(_ultraQuests)) _ultraQuests.forEach(checkTask);
+    if (hasChanged) {
+      _questDirty = true;
+      var qp = document.getElementById('quest-panel');
+      if (qp && qp.classList.contains('open')) {
+        if (typeof _renderQuests === 'function') _renderQuests();
+      } else if (typeof _scheduleQuestRender === 'function') {
+        _scheduleQuestRender();
+      }
+      if (typeof _scheduleQuestSave === 'function') _scheduleQuestSave();
     }
     _questPending[normalizedKey] = (_questPending[normalizedKey] || 0) + delta;
     _scheduleQuestSync();
@@ -8281,13 +8396,17 @@ function checkHits() {
       // HIT this resource — bu swing için kilitle
       res.lastHitSwingId = _swingId;
       res.shake = 5; res.shakeAng = player.angle + Math.PI;
-      // In online mode: notify server so all players see the damage
+      // Optimistic local damage & server sync
       if (_connected && _socket && res._netIdx !== undefined && res._netIdx >= 0) {
+        res.hp = Math.max(1, (res.hp || res.maxHp || 500) - dmg);
         _socket.emit('res_hit', { idx: res._netIdx, dmg });
-        // In online mode the server owns resource HP and rewards.
-        continue;
+      } else {
+        res.hp = Math.max(0, (res.hp || res.maxHp || 500) - dmg);
+        if (res.hp <= 0) {
+          res._destroyed = true;
+          respawnQueue.push({ x: res.x, y: res.y, timer: 30 });
+        }
       }
-      hitAny = true;
       if (player.weapon === 1) addAxeXP(4);
       const harvestMult = (player.weapon === 1 ? 3 : 2) * (player.harvestBonus || 1);
       const harvest = harvestMult;
@@ -8295,11 +8414,49 @@ function checkHits() {
       const yG = res.yG > 0 ? scaleGoldReward(res.yG) : 0;
       const yA = res.yA || 0;
       const _ftParts = [];
-      if (yW > 0) { player.wood  += yW; _ftParts.push('+'+yW+'🪵'); _trackMission('m2', yW); window._updateQuestProgress('wood', yW); localStorage.setItem('fb_total_wood_meta', parseInt(localStorage.getItem('fb_total_wood_meta')||'0',10)+yW); }
-      if (yS > 0) { player.stone += yS; _ftParts.push('+'+yS+'🪨'); window._updateQuestProgress('stone', yS); }
-      if (yG > 0) { player.gold  += yG; _ftParts.push('+'+yG+'💰'); window._updateQuestProgress('gold', yG); }
-      if (yA > 0 && Math.random() < yA) { player.apples++; _ftParts.push('+1🍎'); }
-      if (_ftParts.length) floatingTexts.push({ x: res.x+(Math.random()-0.5)*30, y: res.y-40, text:_ftParts.join(' '), alpha:1, life:38, color:'#c8f5a0' });
+      if (yW > 0) {
+        player.wood = (player.wood || 0) + yW;
+        _ftParts.push('+' + yW + '🪵');
+        _trackMission('m2', yW);
+        if (typeof window._updateQuestProgress === 'function') window._updateQuestProgress('wood', yW);
+        localStorage.setItem('fb_total_wood_meta', parseInt(localStorage.getItem('fb_total_wood_meta')||'0', 10) + yW);
+      }
+      if (yS > 0) {
+        player.stone = (player.stone || 0) + yS;
+        _ftParts.push('+' + yS + '🪨');
+        if (typeof window._updateQuestProgress === 'function') window._updateQuestProgress('stone', yS);
+      }
+      if (yG > 0) {
+        player.gold = (player.gold || 0) + yG;
+        _ftParts.push('+' + yG + '💰');
+        if (typeof window._updateQuestProgress === 'function') window._updateQuestProgress('gold', yG);
+      }
+      if (yA > 0) {
+        const applesGained = Math.floor(yA) + (Math.random() < (yA % 1) ? 1 : 0);
+        if (applesGained > 0) {
+          player.apples = (player.apples || 0) + applesGained;
+          _ftParts.push(applesGained === 1 ? '+1🍎' : `+${applesGained}🍎`);
+        }
+      }
+      if (_ftParts.length) {
+        floatingTexts.push({
+          x: res.x + (Math.random() - 0.5) * 30,
+          y: res.y - 40,
+          text: _ftParts.join(' '),
+          alpha: 1,
+          life: 38,
+          color: '#c8f5a0'
+        });
+      }
+      // Audio & tactile feedback
+      if (res.type === 'wood' || res.type === 'apple' || res.type === 'bush') {
+        playSound(200 + Math.floor(Math.random() * 60), 0.07, 'square', 0.14);
+      } else if (res.type === 'stone' || res.type === 'gold') {
+        playSound(340 + Math.floor(Math.random() * 80), 0.08, 'triangle', 0.16);
+      } else {
+        playSound(440, 0.06, 'sine', 0.15);
+      }
+      shake(2);
       // NEW: Mushroom — heal
       if ((res.yHp||0) > 0) {
         const healAmt = res.yHp;
@@ -16478,11 +16635,16 @@ function initMultiplayer() {
 
   // ── Building limit reached — server refused placement ─────────────────────
   _socket.on('build_limit_reached', () => {
-    showToast('⛔ Bina limitine ulaştın! (80 bina max)', 3000, '#ff6644');
-    // Remove the ghost building that was optimistically added before the server ACK
+    showToast('⛔ Bina yerleştirilemedi (Limit veya yetersiz kaynak)', 3000, '#ff6644');
+    // Remove the ghost building and refund resources optimistically spent
     if (_lastPlacedClientId) {
       const ghostB = _buildingsMap.get(_lastPlacedClientId);
       if (ghostB) {
+        const costs = { 3:[20,5], 4:[40,20], 5:[10,20], 6:[30,10], 7:[60,40], 8:[30,0], 9:[80,60], 10:[25,0] };
+        const [cW, cS] = costs[ghostB.type] || [0, 0];
+        player.wood = (player.wood || 0) + cW;
+        player.stone = (player.stone || 0) + cS;
+        updateUI();
         const idx = buildings.indexOf(ghostB);
         if (idx !== -1) buildings.splice(idx, 1);
         _buildingsMap.delete(_lastPlacedClientId);
@@ -16947,36 +17109,36 @@ function initMultiplayer() {
   });
 
   _socket.on('res_reward', (data = {}) => {
-    const { wood = 0, stone = 0, gold = 0, apples = 0, score, gainedWood = 0, gainedStone = 0, gainedGold = 0, gainedApples = 0, gainedHp = 0, gainedXp = 0, resX, resY, destroyed } = data;
-    player.wood = Math.max(0, Number(wood) || 0);
-    player.stone = Math.max(0, Number(stone) || 0);
-    player.gold = Math.max(player.gold || 0, Number(gold) || 0);
-    player.apples = Math.max(0, Number(apples) || 0);
+    const { wood, stone, gold, apples, score, gainedWood = 0, gainedStone = 0, gainedGold = 0, gainedApples = 0, gainedHp = 0, gainedXp = 0, resX, resY, destroyed } = data;
+    if (typeof wood === 'number') player.wood = Math.max(player.wood || 0, Number(wood) || 0);
+    if (typeof stone === 'number') player.stone = Math.max(player.stone || 0, Number(stone) || 0);
+    if (typeof gold === 'number') player.gold = Math.max(player.gold || 0, Number(gold) || 0);
+    if (typeof apples === 'number') player.apples = Math.max(player.apples || 0, Number(apples) || 0);
     if (typeof score === 'number') player.score = Math.max(player.score || 0, score);
     if (gainedHp > 0) { player.hp = Math.min(player.maxHp, player.hp + gainedHp); updateHpBar(); }
     if (gainedXp > 0) { player.xp += scaledXpGain(gainedXp); updateXP(); }
 
     const fxX = typeof resX === 'number' ? resX : player.x;
     const fxY = typeof resY === 'number' ? resY - 35 : player.y - 40;
-    const ftParts = [];
-    if (gainedWood > 0) { ftParts.push(`+${gainedWood}🪵`); _trackMission('m2', gainedWood); if (window._updateQuestProgress) window._updateQuestProgress('wood', gainedWood); }
-    if (gainedStone > 0) { ftParts.push(`+${gainedStone}🪨`); if (window._updateQuestProgress) window._updateQuestProgress('stone', gainedStone); }
-    if (gainedGold > 0) { ftParts.push(`+${gainedGold}💰`); if (window._updateQuestProgress) window._updateQuestProgress('gold', gainedGold); }
-    if (gainedApples > 0) { ftParts.push(`+${gainedApples}🍎`); }
-    if (gainedHp > 0) { ftParts.push(`+${gainedHp}💚`); }
-    if (gainedXp > 0) { ftParts.push(`+${gainedXp}✨XP`); }
-    if (destroyed) { ftParts.push('💥 KIRILDI!'); }
-
-    if (ftParts.length && floatingTexts.length < 25) {
+    
+    // Only show destruction celebration text and bonuses if resource broke
+    if (destroyed) {
+      const ftParts = [];
+      if (gainedWood > 0) { ftParts.push(`+${gainedWood}🪵`); _trackMission('m2', gainedWood); if (window._updateQuestProgress) window._updateQuestProgress('wood', gainedWood); }
+      if (gainedStone > 0) { ftParts.push(`+${gainedStone}🪨`); if (window._updateQuestProgress) window._updateQuestProgress('stone', gainedStone); }
+      if (gainedGold > 0) { ftParts.push(`+${gainedGold}💰`); if (window._updateQuestProgress) window._updateQuestProgress('gold', gainedGold); }
+      if (gainedApples > 0) { ftParts.push(`+${gainedApples}🍎`); }
+      ftParts.push('💥 KIRILDI!');
       floatingTexts.push({
         x: fxX + (Math.random() - 0.5) * 24,
         y: fxY,
         text: ftParts.join(' '),
         alpha: 1,
-        life: 38,
-        color: destroyed ? '#ffd700' : '#c8f5a0',
-        big: Boolean(destroyed)
+        life: 48,
+        color: '#ffd700',
+        big: true
       });
+      playSound(660, 0.15, 'triangle', 0.25);
     }
     updateUI();
   });
@@ -17169,6 +17331,14 @@ function initMultiplayer() {
     _playerLevelKills++; _checkPlayerLevel();
     updateUI(); updateXP();
     _killCamTimer = 40; _killCamX = player.x; _killCamY = player.y;
+    if (gold > 0 && typeof window._updateQuestProgress === 'function') window._updateQuestProgress('gold', gold);
+    if (typeName && typeof _incQuestStat === 'function') {
+      const tn = String(typeName).toLowerCase();
+      if (tn.includes('kurt') || tn.includes('wolf')) _incQuestStat('wolves', 1);
+      else if (tn.includes('ayı') || tn.includes('bear')) _incQuestStat('bears', 1);
+      else if (tn.includes('akrep') || tn.includes('scorpion')) _incQuestStat('scorpions', 1);
+      else if (tn.includes('örümcek') || tn.includes('spider')) _incQuestStat('spiders', 1);
+    }
     if (player.vampire) { player.hp = Math.min(player.maxHp, player.hp + 12); updateHpBar(); floatingTexts.push({ x: player.x, y: player.y - 40, text: '🧛 +12 HP', alpha: 1, life: 35, color: '#cc55ff' }); }
     if(Math.random()<0.22) spawnArmorDrop(player.x, player.y);
     floatingTexts.push({ x: player.x, y: player.y - 55, text: `⚔️ +${xp} XP  +${_bcScoreGain}⭐`, alpha: 1, life: 50, color: '#ffe555' });
@@ -17547,8 +17717,20 @@ function _mpSwing() {
 
 function _mpBuildPlaced(b, radius) {
   if (!_connected || !_socket || !b._netId) return;
-  _socket.emit('place_building', { id: b._netId, type: b.type, x: b.x, y: b.y,
-    angle: b.angle, hp: b.hp, maxHp: b.maxHp, radius: radius || 34, tier: b.tier || 0 });
+  _socket.emit('place_building', {
+    id: b._netId,
+    type: b.type,
+    x: b.x,
+    y: b.y,
+    angle: b.angle,
+    hp: b.hp,
+    maxHp: b.maxHp,
+    radius: radius || 34,
+    tier: b.tier || 0,
+    wood: player.wood || 0,
+    stone: player.stone || 0,
+    gold: player.gold || 0
+  });
 }
 
 function _mpBuildDestroyed(b) {
@@ -18642,44 +18824,80 @@ function _initEntryConsent(){
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _initEntryConsent);
 else _initEntryConsent();
 
-// ── DAILY QUESTS ──────────────────────────────────────────────────────
-var _QUEST_POOL = [
-  {id:'kills5',   name:'Düşman Avı',      goal:5,  unit:'kill',   key:'kills',  emoji:'⚔️',  reward:'+100🪙'},
-  {id:'kills10',  name:'Savaşçı',         goal:10, unit:'kill',   key:'kills',  emoji:'💀',  reward:'+250🪙'},
-  {id:'wood50',   name:'Oduncu',          goal:50, unit:'odun',   key:'wood',   emoji:'🌲',  reward:'+80🪙'},
-  {id:'stone30',  name:'Taş Ustası',      goal:30, unit:'taş',    key:'stone',  emoji:'🪨',  reward:'+80🪙'},
-  {id:'gold100',  name:'Hazine Avcısı',   goal:100,unit:'altın',  key:'gold',   emoji:'💰',  reward:'+150🪙'},
-  {id:'survive3', name:'Hayatta Kal',     goal:3,  unit:'dakika', key:'time',   emoji:'⏱️',  reward:'+120🪙'},
-  {id:'chests2',  name:'Sandık Avcısı',   goal:2,  unit:'sandık', key:'chests', emoji:'📦',  reward:'+200🪙'},
-  {id:'kills20',  name:'Katil Makinesi',  goal:20, unit:'kill',   key:'kills',  emoji:'🔥',  reward:'+400🪙'},
-  {id:'builds5',  name:'Mühendis',        goal:5,  unit:'bina',   key:'builds', emoji:'🏗️',  reward:'+100🪙'},
-  {id:'wood100',  name:'Ormancı',         goal:100,unit:'odun',   key:'wood',   emoji:'🌳',  reward:'+200🪙'},
+// ── DAILY & ULTRA QUESTS ──────────────────────────────────────────────
+var QUEST_UNITS = {
+  wood: 'odun',
+  stone: 'taş',
+  gold: 'altın',
+  time: 'dakika',
+  buildings: 'yapı',
+  kills: 'oyuncu',
+  wolves: 'kurt',
+  bears: 'ayı',
+  scorpions: 'akrep',
+  spiders: 'örümcek',
+  airdrops: 'sandık',
+  kingKills: 'kral'
+};
+
+var _DEFAULT_DAILY_POOL = [
+  { id: 'daily_wood_250', title: 'Genç Oduncu', desc: '250 odun topla', icon: '🪵', key: 'wood', target: 250, rewardCoins: 180, rewardXp: 120 },
+  { id: 'daily_stone_150', title: 'Taşın İlk Sırrı', desc: '150 taş topla', icon: '🪨', key: 'stone', target: 150, rewardCoins: 180, rewardXp: 120 },
+  { id: 'daily_gold_100', title: 'Parlayan Damar', desc: '100 altın çıkar', icon: '🪙', key: 'gold', target: 100, rewardCoins: 220, rewardXp: 150 },
+  { id: 'daily_survive_4', title: 'İlk Nöbet', desc: 'Toplam 4 dakika hayatta kal', icon: '⏱️', key: 'time', target: 4, rewardCoins: 220, rewardXp: 160 },
+  { id: 'daily_build_8', title: 'Siper Kur', desc: '8 yapı inşa et', icon: '🧱', key: 'buildings', target: 8, rewardCoins: 240, rewardXp: 180 },
+  { id: 'daily_kills_3', title: 'İlk Av', desc: '3 düşman oyuncuyu alt et', icon: '⚔️', key: 'kills', target: 3, rewardCoins: 260, rewardXp: 200 },
+  { id: 'daily_wood_900', title: 'Orman Maratonu', desc: '900 odun topla', icon: '🌲', key: 'wood', target: 900, rewardCoins: 650, rewardXp: 500 },
+  { id: 'daily_gold_500', title: 'Altın Damarı', desc: '500 altın çıkar', icon: '💰', key: 'gold', target: 500, rewardCoins: 850, rewardXp: 700 },
+  { id: 'daily_wolves_35', title: 'Kurt Sürücüsü', desc: '35 vahşi kurt avla', icon: '🐺', key: 'wolves', target: 35, rewardCoins: 760, rewardXp: 620 },
+  { id: 'daily_airdrop_2', title: 'Gökyüzü Payı', desc: '2 airdrop sandığı aç', icon: '📦', key: 'airdrops', target: 2, rewardCoins: 950, rewardXp: 800 }
 ];
 
-var _today    = new Date().toDateString();
-var _stored   = null;
-try { _stored = JSON.parse(localStorage.getItem('fb_quests_v2') || 'null'); } catch(e){}
-var _quests;
-var _ultraQuests = [];
+function _formatQuestTask(task, type) {
+  if (!task) return null;
+  var localProg = {};
+  try { localProg = JSON.parse(localStorage.getItem('fb_quest_prog') || '{}'); } catch(e){}
+  var localClaimed = {};
+  try { localClaimed = JSON.parse(localStorage.getItem('fb_claimed_quests') || '{}'); } catch(e){}
 
-if (_stored && _stored.date === _today) {
-  _quests = _stored.quests;
-} else {
-  // Seeded pick so everyone gets same daily quests
-  var _seed = 0;
-  var _td   = _today;
-  for (var _qi=0;_qi<_td.length;_qi++) _seed = (_seed + _td.charCodeAt(_qi)) & 0x7fffffff;
-  var _rngState = _seed;
-  function _seededRng(n){ _rngState = (_rngState * 1664525 + 1013904223) & 0x7fffffff; return _rngState % n; }
-  var _chosen = [];
-  var _usedIdx = {};
-  while (false) {
-    var _pi = _seededRng(_QUEST_POOL.length);
-    if (!_usedIdx[_pi]) { _usedIdx[_pi]=1; _chosen.push(Object.assign({}, _QUEST_POOL[_pi], {progress:0, done:false})); }
-  }
-  _quests = _chosen;
-  try { localStorage.setItem('fb_quests_v2', JSON.stringify({date:_today, quests:_quests})); } catch(e){}
+  var key = task.key === 'builds' ? 'buildings' : task.key === 'chests' ? 'airdrops' : (task.key || '');
+  var target = Math.max(1, Number(task.target || task.goal || 1));
+  var unit = task.unit || QUEST_UNITS[key] || 'adet';
+  var icon = task.icon || task.emoji || '🎯';
+  var title = task.title || task.name || 'Görev';
+  var desc = task.desc || (target + ' ' + unit + ' topla/tamamla');
+  var rewardCoins = Number(task.rewardCoins || (task.reward ? String(task.reward).replace(/[^0-9]/g, '') : 100));
+  var rewardXp = Number(task.rewardXp || 50);
+
+  var pServer = Number(task.progress || 0);
+  var pLocal = Number(localProg[key] || 0);
+  var currentProg = Math.min(target, Math.max(pServer, pLocal));
+  var isClaimed = Boolean(task.claimed || localClaimed[task.id]);
+  var isDone = isClaimed || (currentProg >= target);
+
+  return {
+    id: String(task.id),
+    key: key,
+    type: type || 'daily',
+    title: title,
+    name: title,
+    icon: icon,
+    emoji: icon,
+    desc: desc,
+    target: target,
+    goal: target,
+    unit: unit,
+    rewardCoins: rewardCoins,
+    rewardXp: rewardXp,
+    reward: '+' + rewardCoins + '🪙',
+    progress: currentProg,
+    claimed: isClaimed,
+    done: isDone
+  };
 }
+
+var _quests = _DEFAULT_DAILY_POOL.map(function(t){ return _formatQuestTask(t, 'daily'); });
+var _ultraQuests = [];
 window._dailyQuests = null;
 
 // Debounced quest render — max one DOM rewrite per second (prevents layout thrash on every kill)
@@ -18700,7 +18918,7 @@ function _scheduleQuestSave(){
   _questSavePending = true;
   setTimeout(function(){
     _questSavePending = false;
-    try { localStorage.setItem('fb_quests_v2', JSON.stringify({date:_today, quests:_quests})); } catch(e){}
+    try { localStorage.setItem('fb_quests_v2', JSON.stringify({date:new Date().toDateString(), quests:_quests})); } catch(e){}
   }, 6000);
 }
 
@@ -18710,64 +18928,208 @@ var _questPanel  = null;
 var _questBody   = null;
 var _questDoneCt = null;
 var _questBadge  = null;
-function _ensureQuestEls(){ if(!_questPanel){_questPanel=document.getElementById('quest-panel');_questBody=document.getElementById('quest-body');_questDoneCt=document.getElementById('quest-done-count');_questBadge=document.getElementById('quest-badge');} }
+function _ensureQuestEls(){
+  if(!_questPanel){
+    _questPanel=document.getElementById('quest-panel');
+    _questBody=document.getElementById('quest-body');
+    _questDoneCt=document.getElementById('quest-done-count');
+    _questBadge=document.getElementById('quest-badge');
+  }
+}
 
 function _renderQuests(){
   _ensureQuestEls();
-  if (!_questBody || !_quests) return;
+  if (!_questBody) return;
   var _doneCount = 0;
   _questBody.innerHTML = '';
-  for (var _qi3=0; _qi3<_quests.length; _qi3++){
-    var _q3 = _quests[_qi3];
-    var _pct = Math.min(100, Math.round((_q3.progress||0) / _q3.goal * 100));
-    if (_q3.claimed) _doneCount++;
-    var _div = document.createElement('div');
-    _div.className = 'quest-item' + (_q3.claimed ? ' done' : '');
-    _div.innerHTML =
-      '<div class="quest-row1"><div class="quest-name">' + _q3.emoji + ' ' + _q3.name + '</div><div class="quest-reward">' + _q3.reward + '</div></div>' +
-      '<div class="quest-bar-wrap"><div class="quest-bar-fill' + (_q3.claimed ? ' done-fill' : '') + '" style="width:' + _pct + '%"></div></div>' +
-      (_q3.claimed
-        ? '<div class="quest-done-text">✅ Ödül alındı</div>'
-        : '<div class="quest-progress-text">' + (_q3.progress||0) + ' / ' + _q3.goal + ' ' + _q3.unit + '</div>' + ((_q3.progress || 0) >= _q3.goal ? '<button class="quest-claim-btn" onclick="window._claimServerQuest(\'' + String(_q3.id).replace(/'/g, '') + '\',\'daily\')">ÖDÜLÜ AL</button>' : ''));
-    _questBody.appendChild(_div);
+
+  var allQuests = Array.isArray(_quests) ? _quests : [];
+  for (var i = 0; i < allQuests.length; i++) {
+    var q = allQuests[i];
+    var target = Number(q.target || q.goal || 1);
+    var progress = Math.min(target, Math.max(0, Number(q.progress || 0)));
+    var isClaimed = Boolean(q.claimed);
+    var isReady = !isClaimed && (progress >= target);
+    if (isClaimed) _doneCount++;
+    var pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
+
+    var item = document.createElement('div');
+    item.className = 'quest-item' + (isClaimed ? ' done' : (isReady ? ' ready' : ''));
+
+    var safeId = String(q.id).replace(/['"\\]/g, '');
+    var html = '<div class="quest-row1">' +
+      '<div class="quest-name">' + (q.icon || '🎯') + ' ' + (q.title || 'Görev') + '</div>' +
+      '<div class="quest-reward">+' + Number(q.rewardCoins || 0) + '🪙</div>' +
+      '</div>';
+
+    if (q.desc) {
+      html += '<div class="quest-desc">' + q.desc + '</div>';
+    }
+
+    html += '<div class="quest-bar-wrap">' +
+      '<div class="quest-bar-fill' + (isClaimed ? ' done-fill' : (isReady ? ' ready-fill' : '')) + '" style="width:' + pct + '%"></div>' +
+      '</div>';
+
+    html += '<div class="quest-footer-row">' +
+      '<div class="quest-progress-text">' + progress + ' / ' + target + ' ' + (q.unit || 'adet') + '</div>' +
+      (isClaimed ? '<div class="quest-done-text">✅ Ödül alındı</div>' : '') +
+      '</div>';
+
+    if (isReady) {
+      html += '<button type="button" class="quest-claim-btn" onclick="window._claimServerQuest(\'' + safeId + '\',\'daily\')">🎁 ÖDÜLÜ AL (+' + Number(q.rewardCoins || 0) + '🪙)</button>';
+    }
+
+    item.innerHTML = html;
+    _questBody.appendChild(item);
   }
-  if (_ultraQuests.length) {
+
+  if (Array.isArray(_ultraQuests) && _ultraQuests.length) {
     var _longTitle = document.createElement('div');
     _longTitle.className = 'quest-section-title';
-    _longTitle.textContent = 'UZUN VADELİ GÖREVLER';
+    _longTitle.textContent = '🏆 UZUN VADELİ GÖREVLER';
     _questBody.appendChild(_longTitle);
-    _ultraQuests.forEach(function(task){
-      var target = Number(task.target || 0);
-      var progress = Math.min(target, Number(task.progress || 0));
-      var done = Boolean(task.claimed);
-      var pct = target > 0 ? Math.min(100, Math.round(progress / target * 100)) : 0;
-      var item = document.createElement('div');
-      item.className = 'quest-item quest-long' + (done ? ' done' : '');
-      item.innerHTML = '<div class="quest-row1"><div class="quest-name">' + (task.icon || '🏆') + ' ' + (task.title || 'Uzun görev') + '</div><div class="quest-reward">+' + Number(task.rewardCoins || 0) + '🪙</div></div>' +
-        '<div class="quest-bar-wrap"><div class="quest-bar-fill' + (done ? ' done-fill' : '') + '" style="width:' + pct + '%"></div></div>' +
-        '<div class="quest-progress-text">' + progress + ' / ' + target + (done ? ' · Ödül alındı' : '') + '</div>' +
-        (!done && progress >= target ? '<button class="quest-claim-btn" onclick="window._claimServerQuest(\'' + String(task.id).replace(/'/g, '') + '\',\'ultra\')">ÖDÜLÜ AL</button>' : '');
-      _questBody.appendChild(item);
-    });
+
+    for (var u = 0; u < _ultraQuests.length; u++) {
+      var uq = _ultraQuests[u];
+      var uTarget = Number(uq.target || uq.goal || 1);
+      var uProgress = Math.min(uTarget, Math.max(0, Number(uq.progress || 0)));
+      var uClaimed = Boolean(uq.claimed);
+      var uReady = !uClaimed && (uProgress >= uTarget);
+      if (uClaimed) _doneCount++;
+      var uPct = uTarget > 0 ? Math.min(100, Math.round((uProgress / uTarget) * 100)) : 0;
+
+      var uItem = document.createElement('div');
+      uItem.className = 'quest-item quest-long' + (uClaimed ? ' done' : (uReady ? ' ready' : ''));
+
+      var uSafeId = String(uq.id).replace(/['"\\]/g, '');
+      var uHtml = '<div class="quest-row1">' +
+        '<div class="quest-name">' + (uq.icon || '🏆') + ' ' + (uq.title || 'Uzun Görev') + '</div>' +
+        '<div class="quest-reward">+' + Number(uq.rewardCoins || 0) + '🪙</div>' +
+        '</div>';
+
+      if (uq.desc) {
+        uHtml += '<div class="quest-desc">' + uq.desc + '</div>';
+      }
+
+      uHtml += '<div class="quest-bar-wrap">' +
+        '<div class="quest-bar-fill' + (uClaimed ? ' done-fill' : (uReady ? ' ready-fill' : '')) + '" style="width:' + uPct + '%"></div>' +
+        '</div>';
+
+      uHtml += '<div class="quest-footer-row">' +
+        '<div class="quest-progress-text">' + uProgress + ' / ' + uTarget + ' ' + (uq.unit || 'adet') + '</div>' +
+        (uClaimed ? '<div class="quest-done-text">✅ Ödül alındı</div>' : '') +
+        '</div>';
+
+      if (uReady) {
+        uHtml += '<button type="button" class="quest-claim-btn" onclick="window._claimServerQuest(\'' + uSafeId + '\',\'ultra\')">🎁 ÖDÜLÜ AL (+' + Number(uq.rewardCoins || 0) + '🪙)</button>';
+      }
+
+      uItem.innerHTML = uHtml;
+      _questBody.appendChild(uItem);
+    }
   }
-  var _totalDone = _doneCount + _ultraQuests.filter(function(task){ return Boolean(task.claimed); }).length;
-  var _totalTasks = (_quests ? _quests.length : 0) + _ultraQuests.length;
-  if (_questDoneCt) _questDoneCt.textContent = _totalDone + '/' + _totalTasks;
-  if (_questBadge) _questBadge.textContent = _totalDone + '/' + _totalTasks;
+
+  var _totalTasks = allQuests.length + (Array.isArray(_ultraQuests) ? _ultraQuests.length : 0);
+  if (_questDoneCt) _questDoneCt.textContent = _doneCount + '/' + _totalTasks;
+  if (_questBadge) _questBadge.textContent = _doneCount + '/' + _totalTasks;
 }
-window._toggleQuests = function(){ _ensureQuestEls(); if (_questPanel) _questPanel.classList.toggle('open'); };
-window._claimServerQuest = function(id, type){
-  var token = localStorage.getItem('fb_auth_token') || '';
-  if (!token) { window._toggleQuests(); return; }
-  fetch('/api/quests/claim', { method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + token}, body:JSON.stringify({questId:id, questType:type}) })
-    .then(function(response){ return response.ok ? response.json() : null; })
-    .then(function(data){
-      if (!data || !data.ok) return;
-      if (data.user) localStorage.setItem('fb_auth_user', JSON.stringify(data.user));
-      _loadServerDailyQuests();
-    }).catch(function(){});
+
+window._toggleQuests = function(){
+  _ensureQuestEls();
+  if (_questPanel) {
+    _questPanel.classList.toggle('open');
+    if (_questPanel.classList.contains('open')) {
+      _renderQuests();
+    }
+  }
 };
-setTimeout(_renderQuests, 600);
+
+window._claimServerQuest = function(id, type){
+  id = String(id || '');
+  type = (type === 'ultra') ? 'ultra' : 'daily';
+  var token = localStorage.getItem('fb_auth_token') || '';
+
+  var targetList = (type === 'ultra') ? _ultraQuests : _quests;
+  var quest = null;
+  if (Array.isArray(targetList)) {
+    quest = targetList.find(function(q){ return String(q.id) === id; });
+  }
+  if (!quest && Array.isArray(_quests)) {
+    quest = _quests.find(function(q){ return String(q.id) === id; });
+  }
+  if (!quest && Array.isArray(_ultraQuests)) {
+    quest = _ultraQuests.find(function(q){ return String(q.id) === id; });
+  }
+  if (!quest) return;
+  if (quest.claimed) return;
+
+  var target = Number(quest.target || quest.goal || 1);
+  if (Number(quest.progress || 0) < target) return;
+
+  var rewardCoins = Number(quest.rewardCoins || 100);
+  var rewardXp = Number(quest.rewardXp || 50);
+
+  function applyLocalClaim(coins, xp) {
+    quest.claimed = true;
+    quest.done = true;
+    try {
+      var claimedMap = JSON.parse(localStorage.getItem('fb_claimed_quests') || '{}');
+      claimedMap[id] = true;
+      localStorage.setItem('fb_claimed_quests', JSON.stringify(claimedMap));
+    } catch(e){}
+
+    if (typeof player !== 'undefined' && player) {
+      player.gold = (player.gold || 0) + coins;
+      if (typeof player.xp !== 'undefined') player.xp += xp;
+      if (typeof updateUI === 'function') updateUI();
+      if (typeof updateXP === 'function') updateXP();
+      if (typeof floatingTexts !== 'undefined' && Array.isArray(floatingTexts)) {
+        floatingTexts.push({
+          x: player.x,
+          y: player.y - 65,
+          text: '🎉 +' + coins + ' 🪙 ÖDÜL ALINDI!',
+          alpha: 1,
+          life: 80,
+          color: '#ffd700',
+          big: true
+        });
+      }
+      if (typeof playSound === 'function') {
+        playSound(587, 0.12, 'triangle', 0.3);
+        setTimeout(function(){ playSound(880, 0.2, 'triangle', 0.35); }, 100);
+      }
+      if (typeof showToast === 'function') {
+        showToast('🎁 ' + (quest.title || quest.name) + ' tamamlandı! +' + coins + ' Altın kazandınız!', 3500, '#22ff66');
+      }
+    }
+    _renderQuests();
+  }
+
+  fetch('/api/quests/claim', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+    },
+    body: JSON.stringify({ questId: id, questType: type })
+  })
+  .then(function(response){ return response.ok ? response.json() : null; })
+  .then(function(data){
+    if (data && data.ok) {
+      if (data.user) {
+        try { localStorage.setItem('fb_auth_user', JSON.stringify(data.user)); } catch(e){}
+      }
+      var c = Number(data.rewardCoins) || rewardCoins;
+      var x = Number(data.rewardXp) || rewardXp;
+      applyLocalClaim(c, x);
+    } else {
+      applyLocalClaim(rewardCoins, rewardXp);
+    }
+  })
+  .catch(function(){
+    applyLocalClaim(rewardCoins, rewardXp);
+  });
+};
 
 var _serverQuestExpiresAt = 0;
 var _serverQuestCountdownTimer = null;
@@ -18788,14 +19150,37 @@ function _renderServerQuestCountdown(){
   var remainSeconds = String(seconds % 60).padStart(2, '0');
   timer.textContent = 'Yeni görevler: ' + hours + ':' + minutes + ':' + remainSeconds;
 }
+
 function _loadServerDailyQuests(){
-  fetch('/api/quests/list', { headers: localStorage.getItem('fb_auth_token') ? { 'Authorization': 'Bearer ' + localStorage.getItem('fb_auth_token') } : {} })
+  var token = localStorage.getItem('fb_auth_token') || '';
+  fetch('/api/quests/list', { headers: token ? { 'Authorization': 'Bearer ' + token } : {} })
     .then(function(response){ return response.ok ? response.json() : null; })
     .then(function(data){
       if (!data || !Array.isArray(data.quests)) return;
       _serverQuestExpiresAt = Number(data.expiresAt || 0);
-      _ultraQuests = Array.isArray(data.ultraQuests) ? data.ultraQuests : [];
-      _quests = data.quests.map(function(task){ return Object.assign({}, task, { goal: task.target, reward: '+' + task.rewardCoins + '🪙', claimed: Boolean(task.claimed), done: Boolean(task.claimed) || Number(task.progress || 0) >= Number(task.target || 0) }); });
+
+      var savedDayKey = localStorage.getItem('fb_quest_day_key') || '';
+      if (data.dayKey && savedDayKey && savedDayKey !== data.dayKey) {
+        try {
+          var claimedMap = JSON.parse(localStorage.getItem('fb_claimed_quests') || '{}');
+          var newClaimed = {};
+          Object.keys(claimedMap).forEach(function(k){
+            if (k.startsWith('ultra_') || k.startsWith('q_')) newClaimed[k] = true;
+          });
+          localStorage.setItem('fb_claimed_quests', JSON.stringify(newClaimed));
+          var prog = JSON.parse(localStorage.getItem('fb_quest_prog') || '{}');
+          ['wood', 'stone', 'gold', 'time', 'buildings', 'kills', 'wolves', 'bears', 'scorpions', 'spiders', 'airdrops', 'kingKills'].forEach(function(k){
+            prog[k] = 0;
+          });
+          localStorage.setItem('fb_quest_prog', JSON.stringify(prog));
+        } catch(e){}
+      }
+      if (data.dayKey) localStorage.setItem('fb_quest_day_key', data.dayKey);
+
+      var ultraTasks = Array.isArray(data.ultraQuests) ? data.ultraQuests : [];
+      _ultraQuests = ultraTasks.map(function(task){ return _formatQuestTask(task, 'ultra'); });
+      _quests = data.quests.map(function(task){ return _formatQuestTask(task, 'daily'); });
+
       _renderQuests();
       _renderServerQuestCountdown();
       if (_serverQuestCountdownTimer) clearInterval(_serverQuestCountdownTimer);
@@ -18803,7 +19188,9 @@ function _loadServerDailyQuests(){
     })
     .catch(function(){});
 }
-setTimeout(_loadServerDailyQuests, 900);
+
+setTimeout(_renderQuests, 300);
+setTimeout(_loadServerDailyQuests, 600);
 
 // ── ACHIEVEMENT POPUP (in-game) ───────────────────────────────────────
 var _achTimer   = null;
@@ -18915,7 +19302,20 @@ window._inviteFriend = function(){
   var _code = window._getPartyCode();
   var _url  = _base + '?partyCode=' + _code;
   var _btn  = document.getElementById('invite-hud-btn');
-  function _copied(){ if (_btn){ var _old=_btn.innerHTML; _btn.innerHTML='✅ Kopyalandı!'; setTimeout(function(){_btn.innerHTML=_old;},2000); } }
+  function _copied(){
+    if (_btn){
+      var _old = _btn.innerHTML;
+      _btn.classList.add('copied');
+      _btn.innerHTML = '<span class="invite-icon">✅</span><span class="invite-text">Kopyalandı!</span>';
+      if (typeof showToast === 'function') {
+        showToast('🔗 Davet linki panoya kopyalandı!', 2500, '#22c55e');
+      }
+      setTimeout(function(){
+        _btn.classList.remove('copied');
+        _btn.innerHTML = _old;
+      }, 2000);
+    }
+  }
   if (navigator.share) {
     navigator.share({title:'🌲 ForestBrawl.io', text:'ForestBrawl.io\'da benimle oyna! 🌲', url:_url}).catch(function(){});
   } else if (navigator.clipboard) {
@@ -18934,7 +19334,20 @@ window._shareScoreWithParty = function(){
   var _time  = (typeof _fmtTime === 'function' && typeof globalTime !== 'undefined') ? _fmtTime(globalTime) : '';
   var _text  = '⚔️ ForestBrawl.io\'da ' + _kills + ' kill yaptım! Age ' + _age + ', ' + _time + ' hayatta kaldım!\n🌲 Benimle oyna: ' + _url;
   var _btn   = document.getElementById('death-invite-btn');
-  function _copied2(){ if (_btn){ var _old2=_btn.innerHTML; _btn.innerHTML='✅ Kopyalandı!'; setTimeout(function(){_btn.innerHTML=_old2;},2200); } }
+  function _copied2(){
+    if (_btn){
+      var _old2 = _btn.innerHTML;
+      _btn.classList.add('copied');
+      _btn.innerHTML = '✅ Kopyalandı!';
+      if (typeof showToast === 'function') {
+        showToast('🔗 Skor linki kopyalandı!', 2500, '#22c55e');
+      }
+      setTimeout(function(){
+        _btn.classList.remove('copied');
+        _btn.innerHTML = _old2;
+      }, 2200);
+    }
+  }
   if (navigator.share) {
     navigator.share({title:'🌲 ForestBrawl.io', text:_text.split('\n').join(' — '), url:_url}).catch(function(){});
   } else if (navigator.clipboard) {
@@ -19070,7 +19483,7 @@ setInterval(function(){
 </div>
 
 <!-- ===== FRIEND INVITE HUD BUTTON ===== -->
-<button id="invite-hud-btn" onclick="window._inviteFriend&&window._inviteFriend()">🔗 Arkadaş Davet Et</button>
+<button type="button" id="invite-hud-btn" onclick="window._inviteFriend&&window._inviteFriend()" title="Arkadaşını Oyuna Davet Et" aria-label="Arkadaş Davet Et"><span class="invite-icon">🔗</span><span class="invite-text">Davet Et</span></button>
 
 <script>
 // ================================================================
