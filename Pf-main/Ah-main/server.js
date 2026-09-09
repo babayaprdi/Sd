@@ -604,6 +604,49 @@ function loadAccountData() {
     console.log('[Database] Starting with fresh database.');
     accountData = { users: {}, clans: {}, leaderboard: {}, recentDeaths: [], nextId: 1, coinResetVersion: 0 };
   }
+
+  if (Object.keys(accountData.users || {}).length === 0) {
+    const seed = hashPassword('admin');
+    const key = usernameKey('owner');
+    accountData.users = {
+      [key]: {
+        id: 1,
+        username: 'owner',
+        email: 'owner@forestbrawl.local',
+        salt: seed.salt,
+        hash: seed.hash,
+        rankId: rankInfo(0).rankId,
+        xp: 0,
+        coins: 0,
+        gold: 0,
+        kills: 0,
+        deaths: 0,
+        games: 0,
+        gamesPlayed: 0,
+        score: 0,
+        bestScore: 0,
+        timePlayed: 0,
+        ownedItems: [],
+        equippedItems: {},
+        questProgress: {},
+        claimedQuests: [],
+        dailyQuests: null,
+        ultraQuests: null,
+        dailyReward: { day: 1, claimedDate: '' },
+        claimedLevelRewards: [],
+        settings: {},
+        createdAt: Date.now(),
+        lastLoginAt: Date.now(),
+        lastMatchAt: Date.now(),
+      }
+    };
+    accountData.nextId = 2;
+    accountData.leaderboard = accountData.leaderboard || {};
+    accountData.recentDeaths = Array.isArray(accountData.recentDeaths) ? accountData.recentDeaths : [];
+    console.warn('[Database] Account snapshot missing; created temporary recovery owner user in account data.');
+    writeSqliteSnapshot(accountData);
+  }
+
   // Progress is never reset on startup. Version markers are retained only for
   // backwards compatibility with older snapshots; migrations must be additive.
   accountData.xpResetVersion = Math.max(Number(accountData.xpResetVersion) || 0, XP_RESET_VERSION);
@@ -1587,21 +1630,25 @@ const server = http.createServer((request, response) => {
 });
 
 function serveStatic(request, response, requestPath) {
-  const adminAliasMap = {
-    '/admin': '/admin.html',
-    '/admin/': '/admin.html',
-    '/admin.html': '/admin/index.html',
-    '/admin.css': '/admin/admin.css',
-    '/admin.js': '/admin/admin.js',
-  };
+  const normalized = String(requestPath || '/').trim();
 
-  if (adminAliasMap[requestPath]) {
-    if (requestPath === '/admin' || requestPath === '/admin/') {
-      response.writeHead(302, { Location: '/admin.html' });
-      response.end();
-      return;
-    }
-    requestPath = adminAliasMap[requestPath];
+  if (normalized === '/admin' || normalized === '/admin/') {
+    response.writeHead(302, { Location: '/admin.html' });
+    response.end();
+    return;
+  }
+
+  if (normalized === '/admin.html') {
+    requestPath = '/admin/index.html';
+  }
+  else if (normalized === '/admin.css') {
+    requestPath = '/admin/admin.css';
+  }
+  else if (normalized === '/admin.js') {
+    requestPath = '/admin/admin.js';
+  }
+  else if (normalized === '/admin/index.html') {
+    requestPath = '/admin/index.html';
   }
 
   if (requestPath === '/.well-known/assetlinks.json' || requestPath === '/assetlinks.json') {
