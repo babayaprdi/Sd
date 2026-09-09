@@ -71,9 +71,11 @@ const adminConfig = {
 };
 function getOwnerCredentials() {
   loadDotEnv(path.join(__dirname, '.env'));
+  const username = String(process.env.OWNER_USERNAME || 'owner').trim().toLowerCase();
+  const password = String(process.env.OWNER_PASSWORD || 'admin').trim();
   return {
-    username: String(process.env.OWNER_USERNAME || '').trim().toLowerCase(),
-    password: String(process.env.OWNER_PASSWORD || '').trim()
+    username,
+    password
   };
 }
 function timingSafeEqualText(left, right) {
