@@ -1004,12 +1004,13 @@ async function handleApi(request, response, requestPath) {
       sendJson(response, 400, { error: 'Geçersiz istek.' });
       return true;
     }
-    const incomingUsername = String(body.username || '').trim();
-    const incomingPassword = String(body.password || '');
-    const usernameMatches = timingSafeEqualText(incomingUsername, ownerUsername);
-    const passwordMatches = timingSafeEqualText(incomingPassword, ownerPassword);
+    const incomingUsername = String(body.username || '').trim().toLowerCase();
+    const incomingPassword = String(body.password || '').trim();
+    const usernameMatches = timingSafeEqualText(incomingUsername, String(ownerUsername || '').trim().toLowerCase());
+    const passwordMatches = timingSafeEqualText(incomingPassword, String(ownerPassword || ''));
     if (!usernameMatches || !passwordMatches) {
       ownerAudit('owner_login_failed', { ip: requestClientKey(request), username: incomingUsername });
+      console.warn(`[OwnerLogin] denied ip=${requestClientKey(request)} username=${incomingUsername} usernameMatches=${usernameMatches} passwordMatches=${passwordMatches} passwordLength=${incomingPassword.length}`);
       sendJson(response, 401, { error: 'Owner bilgileri geçersiz.' });
       return true;
     }
