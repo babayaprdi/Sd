@@ -2,12 +2,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const dotenv = require('dotenv');
 const { DatabaseSync } = require('node:sqlite');
 const { Server } = require('socket.io');
 const NetworkPhysics = require('./game/networkPhysics.js');
-
-dotenv.config({ path: path.join(__dirname, '.env') });
 
 const PORT = Number(process.env.PORT || 3000);
 const root = path.join(__dirname, 'game');
@@ -197,8 +194,18 @@ loadAdminConfig();
 loadOwnerAudit();
 const authSecret = process.env.AUTH_SECRET || crypto.createHash('sha256').update(`forestbrawl:${path.resolve(databaseFile)}`).digest('hex');
 if (!process.env.AUTH_SECRET) console.warn('[Security] AUTH_SECRET is not set; using a stable development secret. Set AUTH_SECRET in production.');
-const allowedOrigins = new Set([
-  ...(process.env.ALLOWED_ORIGINS || '').split(','),
+function normalizeAllowedOrigin(origin) {
+  return String(origin || '')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/^https?:\/\//, '')
+    .toLowerCase();
+}
+const configuredAllowedOrigins = String(process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => normalizeAllowedOrigin(origin))
+  .filter(Boolean);
+const defaultAllowedOrigins = [
   'https://forestbrawl.fun',
   'https://www.forestbrawl.fun',
   'https://titotu.io',
@@ -206,7 +213,28 @@ const allowedOrigins = new Set([
   'https://titotu.ru',
   'https://www.titotu.ru',
   'http://localhost:3000',
-].map(origin => origin.trim()).filter(Boolean));
+  'http://127.0.0.1:3000',
+  'http://0.0.0.0:3000',
+  'http://localhost',
+  'http://127.0.0.1',
+  'http://0.0.0.0',
+];
+const allowedOrigins = new Set([
+  ...configuredAllowedOrigins,
+  ...defaultAllowedOrigins.map(normalizeAllowedOrigin),
+].filter(Boolean));
+const allowedOriginHostnames = new Set([...allowedOrigins].map(origin => {
+  if (origin.startsWith('http://')) return origin.replace(/^http:\/\//, '');
+  if (origin.startsWith('https://')) return origin.replace(/^https:\/\//, '');
+  return origin;
+}));
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const normalized = normalizeAllowedOrigin(origin);
+  if (allowedOrigins.has(normalized)) return true;
+  const hostname = normalized.replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+  return allowedOriginHostnames.has(hostname);
+}
 const worldSeed = 0x4F524553;
 let nextMobId = 1;
 const airdrops = new Map();
@@ -860,7 +888,7 @@ function persistPlayerScore(player) {
 
 function leaderboard(tab) {
   if (tab === 'recent') {
-    return (accountData.recentDeaths || []).map(entry => {
+    return (Array.isArray(accountData.recentDeaths) ? accountData.recentDeaths : []).map(entry => {
       const user = accountData.users?.[usernameKey(entry.name)];
       const currentRank = user ? rankInfo(user.xp || 0) : null;
       return {
@@ -1011,16 +1039,11 @@ async function handleApi(request, response, requestPath) {
       sendJson(response, 200, { items: cosmeticCatalog.map(publicCosmetic), chests: Object.fromEntries(Object.entries(CHEST_CONFIG).map(([id, chest]) => [id, { cost: chest.cost, rewards: [...chest.rewards] }])) });
       return true;
     }
-
-    let body = {};
-    try { body = await readJson(request); } catch (_) {
-      if (request.method === 'DELETE') { body = {}; }
-      else { sendJson(response, 400, { error: 'Geçersiz kozmetik isteği.' }); return true; }
-    }
-
+    let body;
+    try { body = await readJson(request); } catch (_) { sendJson(response, 400, { error: 'Geçersiz kozmetik isteği.' }); return true; }
+    const itemId = String(body.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 48);
+    if (!itemId || !COSMETIC_TYPES.has(body.type) || !COSMETIC_RARITIES.has(body.rarity)) { sendJson(response, 400, { error: 'ID, tür veya rarity geçersiz.' }); return true; }
     if (request.method === 'DELETE') {
-      const itemId = String(body.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 48);
-      if (!itemId) { sendJson(response, 400, { error: 'ID gerekli.' }); return true; }
       const index = cosmeticCatalog.findIndex(item => item.id === itemId);
       if (index < 0) { sendJson(response, 404, { error: 'Kozmetik bulunamadı.' }); return true; }
       cosmeticCatalog.splice(index, 1);
@@ -1030,10 +1053,6 @@ async function handleApi(request, response, requestPath) {
       sendJson(response, 200, { ok: true });
       return true;
     }
-
-    const itemId = String(body.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 48);
-    if (!itemId || !COSMETIC_TYPES.has(body.type) || !COSMETIC_RARITIES.has(body.rarity)) { sendJson(response, 400, { error: 'ID, tür veya rarity geçersiz.' }); return true; }
-
     const item = { id: itemId, type: body.type, name: String(body.name || itemId).trim().slice(0, 40), rarity: body.rarity, color: String(body.color || '#b8f36b').slice(0, 20), asset: String(body.asset || `players/${itemId}.png`).trim().slice(0, 160), price: Math.max(0, Math.min(1000000, Number(body.price) || 0)), chests: Array.isArray(body.chests) ? body.chests.filter(chestId => Object.prototype.hasOwnProperty.call(CHEST_CONFIG, chestId)) : [], createdAt: Date.now() };
     const existing = cosmeticCatalog.findIndex(entry => entry.id === itemId);
     if (existing >= 0) cosmeticCatalog[existing] = item;
@@ -1619,12 +1638,21 @@ const io = new Server(server, {
   path: '/api/socket.io',
   pingInterval: 10000,
   pingTimeout: 15000,
-  perMessageDeflate: false, // Disabling compression on high-frequency small packets eliminates CPU lag & buffer bloat
+  perMessageDeflate: false,
   maxHttpBufferSize: 1e6,
   cors: {
-    origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      return callback(null, isAllowedOrigin(origin));
+    },
+    methods: ['GET', 'POST'],
     credentials: true,
   },
+});
+
+io.engine.on('connection_error', (err) => {
+  const details = err?.message || 'unknown socket.io engine error';
+  console.warn('[Socket.IO] engine connection error:', details);
 });
 
 function compactState(state, full = false) {
