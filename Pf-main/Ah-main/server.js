@@ -1587,6 +1587,21 @@ const server = http.createServer((request, response) => {
 });
 
 function serveStatic(request, response, requestPath) {
+  if (requestPath === '/admin' || requestPath === '/admin/') {
+    response.writeHead(302, { Location: '/admin.html' });
+    response.end();
+    return;
+  }
+  if (requestPath === '/admin.html') {
+    requestPath = '/admin/index.html';
+  }
+  if (requestPath === '/admin.css') {
+    requestPath = '/admin/admin.css';
+  }
+  if (requestPath === '/admin.js') {
+    requestPath = '/admin/admin.js';
+  }
+
   if (requestPath === '/.well-known/assetlinks.json' || requestPath === '/assetlinks.json') {
     const candidatePaths = [
       path.join(root, '.well-known', 'assetlinks.json'),
