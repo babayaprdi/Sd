@@ -606,12 +606,15 @@ function loadAccountData() {
   }
 
   if (Object.keys(accountData.users || {}).length === 0) {
-    const seed = hashPassword('admin');
-    const key = usernameKey('owner');
+    const ownerCreds = getOwnerCredentials();
+    const username = ownerCreds.username || 'owner';
+    const password = ownerCreds.password || 'admin';
+    const seed = hashPassword(password);
+    const key = usernameKey(username);
     accountData.users = {
       [key]: {
         id: 1,
-        username: 'owner',
+        username,
         email: 'owner@forestbrawl.local',
         salt: seed.salt,
         hash: seed.hash,
@@ -643,7 +646,7 @@ function loadAccountData() {
     accountData.nextId = 2;
     accountData.leaderboard = accountData.leaderboard || {};
     accountData.recentDeaths = Array.isArray(accountData.recentDeaths) ? accountData.recentDeaths : [];
-    console.warn('[Database] Account snapshot missing; created temporary recovery owner user in account data.');
+    console.warn('[Database] Account snapshot missing; created environment-owner recovery account in account data.');
     writeSqliteSnapshot(accountData);
   }
 
@@ -655,6 +658,69 @@ function loadAccountData() {
 }
 
 loadAccountData();
+
+function ensureOwnerAccountMatchesEnvironment() {
+  const ownerCreds = getOwnerCredentials();
+  const username = String(ownerCreds.username || 'owner').trim();
+  const password = String(ownerCreds.password || 'admin').trim();
+  if (!username || !password) {
+    console.warn('[Owner] OWNER_USERNAME and OWNER_PASSWORD must be configured in the environment.');
+    return;
+  }
+
+  const userKey = usernameKey(username);
+  const seeded = hashPassword(password);
+  const existing = accountData.users?.[userKey] || Object.values(accountData.users || {}).find(user => usernameKey(user.username) === userKey);
+
+  if (existing) {
+    existing.username = username;
+    existing.email = existing.email || 'owner@forestbrawl.local';
+    existing.salt = seeded.salt;
+    existing.hash = seeded.hash;
+    existing.lastLoginAt = existing.lastLoginAt || Date.now();
+    existing.lastMatchAt = existing.lastMatchAt || Date.now();
+    console.log(`[Owner] Synced owner account ${username} from environment credentials.`);
+  } else {
+    const id = Math.max(1, Number(accountData.nextId) || 1);
+    const user = {
+      id,
+      username,
+      email: 'owner@forestbrawl.local',
+      salt: seeded.salt,
+      hash: seeded.hash,
+      rankId: rankInfo(0).rankId,
+      xp: 0,
+      coins: 0,
+      gold: 0,
+      kills: 0,
+      deaths: 0,
+      games: 0,
+      gamesPlayed: 0,
+      score: 0,
+      bestScore: 0,
+      timePlayed: 0,
+      ownedItems: [],
+      equippedItems: {},
+      questProgress: {},
+      claimedQuests: [],
+      dailyQuests: null,
+      ultraQuests: null,
+      dailyReward: { day: 1, claimedDate: '' },
+      claimedLevelRewards: [],
+      settings: {},
+      createdAt: Date.now(),
+      lastLoginAt: Date.now(),
+      lastMatchAt: Date.now(),
+    };
+    accountData.users[userKey] = user;
+    accountData.nextId = id + 1;
+    console.warn(`[Owner] Created owner account ${username} from environment credentials.`);
+  }
+
+  writeSqliteSnapshot(accountData);
+}
+
+ensureOwnerAccountMatchesEnvironment();
 for (const clan of Object.values(accountData.clans || {})) clans.set(clan.id, clan);
 
 let _saveTimeout = null;
