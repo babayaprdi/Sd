@@ -2301,6 +2301,24 @@
                 </div>
             </div>
         </div>
+
+        <div class="w-full mt-3 mb-3">
+            <div class="panel-inset p-2 sm:p-3">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-8 h-8 rounded-full bg-[#F7C02D]/20 border border-[#F7C02D] flex items-center justify-center text-[#F7C02D] shrink-0">
+                            <i class="fa-solid fa-trophy text-sm"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="font-io text-[10px] sm:text-[11px] text-[#F7C02D] uppercase tracking-wide">World Ranking</div>
+                            <div class="text-white font-black text-[11px] sm:text-[12px] truncate">Top Forest Brawl Players</div>
+                        </div>
+                    </div>
+                    <button onclick="openModal('leadersModal'); loadLeaderboard(); playSfx('click')" class="btn-3d btn-action px-2 py-1 font-io text-[9px] sm:text-[10px] text-white stroke-text">ALL</button>
+                </div>
+                <div id="home-leaderboard-list" class="mt-2 flex flex-col gap-1"></div>
+            </div>
+        </div>
     <!-- Alt Grid (Cosmetics/Envanter, Shop/Mağaza) -->
     <div class="grid grid-cols-2 gap-2 sm:gap-3 w-full mt-4">
         <button onclick="openCosmeticsModal(); playSfx('click')" class="btn-3d btn-action p-2 flex flex-col items-center justify-center border-[3px] hover:bg-[#4A2D17]">
@@ -5157,6 +5175,67 @@
             return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
         }
 
+        async function loadHomeLeaderboard() {
+            const container = document.getElementById('home-leaderboard-list');
+            if (!container) return;
+            container.innerHTML = '<div class="text-center text-white/60 py-2 font-io text-[10px]"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Ranking...</div>';
+
+            try {
+                const res = await fetch('/api/leaderboard?tab=all');
+                if (!res.ok) throw new Error(`Leaderboard API returned ${res.status}`);
+                const data = await res.json();
+                const entries = Array.isArray(data?.entries) ? data.entries.slice(0, 5) : [];
+                if (!entries.length) {
+                    container.innerHTML = '<div class="text-center text-white/60 py-2 font-io text-[10px]">No ranking yet</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                for (const entry of entries) {
+                    const row = document.createElement('div');
+                    row.className = 'leaderboard-row flex items-center gap-2 p-1 rounded-lg border border-white/10 bg-black/25';
+                    const rankId = typeof entry.rankId === 'number' ? entry.rankId : 0;
+                    const rankTitle = entry.rankName || RANKS[rankId] || 'Tohum';
+                    const visualRankId = getVisualRankId(rankId);
+                    const highestGold = Math.max(0, Number(entry.gold || 0));
+                    const profileSlot = document.createElement('span');
+                    profileSlot.className = 'leaderboard-profile-slot inline-block';
+                    profileSlot.style.width = '26px';
+                    profileSlot.style.height = '26px';
+                    profileSlot.style.flex = '0 0 26px';
+                    const profile = entry.profileCosmetics || {};
+                    const selectedAvatar = REAL_SKINS.find(item => item.id === profile.avatarId);
+                    const fallbackSkin = REAL_SKINS.find(item => item.id === profile.skinId && item.img);
+                    const avatar = fallbackSkin || (selectedAvatar?.img ? selectedAvatar : null) || REAL_SKINS.find(item => item.id === 'wolf');
+                    const img = document.createElement('img');
+                    img.src = avatar.img;
+                    img.alt = avatar.name;
+                    img.className = 'w-6 h-6 rounded-full object-cover border border-yellow-400/50';
+                    profileSlot.appendChild(img);
+
+                    const rank = document.createElement('span');
+                    rank.className = 'font-io text-[10px] text-[#F7C02D]';
+                    rank.innerHTML = `${getRankIconHtml(visualRankId)} ${escapeLeaderboardText(rankTitle)}`;
+
+                    const player = document.createElement('span');
+                    player.className = 'flex-1 min-w-0 font-black text-[10px] text-white truncate';
+                    player.textContent = entry.name || 'forestbrawl';
+
+                    const value = document.createElement('span');
+                    value.className = 'font-io text-[10px] text-[#FFDF73] whitespace-nowrap';
+                    value.innerHTML = `${highestGold.toLocaleString()} <img class="real-coin-icon" src="asset/gold.png" alt="Altın">`;
+
+                    row.appendChild(profileSlot);
+                    row.appendChild(player);
+                    row.appendChild(rank);
+                    row.appendChild(value);
+                    container.appendChild(row);
+                }
+            } catch (err) {
+                container.innerHTML = '<div class="text-center text-red-300 py-2 font-io text-[10px]">Ranking unavailable</div>';
+            }
+        }
+
         function createLeaderboardProfile(entry) {
             const profile = entry.profileCosmetics || {};
             const selectedAvatar = REAL_SKINS.find(item => item.id === profile.avatarId);
@@ -6367,6 +6446,7 @@
             
             checkAuthStatus();
             pingServer();
+            loadHomeLeaderboard();
             setInterval(pingServer, 15000);
             startLivePreview();
             animateMenu();
