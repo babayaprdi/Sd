@@ -3195,6 +3195,7 @@ io.on('connection', (socket) => {
       let difference = Math.abs(Math.atan2(dy, dx) - angle);
       if (difference > Math.PI) difference = Math.PI * 2 - difference;
       if (difference > spread) continue;
+      if (swingId) target.lastHitSwingId = swingId;
       applyPlayerDamage(target, damage);
       io.to(targetId).emit('pvp_hit', { dmg: damage, fromName: attacker.name || 'Oyuncu' });
       io.to(targetId).emit('self_state', { hp: target.hp, hpSeq: target.hpSeq, hpAt: target.hpAt });
@@ -3231,10 +3232,10 @@ io.on('connection', (socket) => {
     if (!attacker || !target || (attacker.hp ?? 0) <= 0 || (target.hp ?? 0) <= 0) return;
     if ((attacker.clanId && attacker.clanId === target.clanId) || (attacker.team && target.team && attacker.team === target.team)) return;
     const swingId = Number(data.swingId);
-    if (!Number.isFinite(attacker.lastSwingAt) || Date.now() - attacker.lastSwingAt > 420) return;
+    if (!Number.isFinite(attacker.lastSwingAt) || Date.now() - attacker.lastSwingAt > 750) return;
     if (swingId && target.lastHitSwingId === swingId) return; // Dedup against swing event
     const dist = Math.hypot((Number(target.x) || 0) - (Number(attacker.x) || 0), (Number(target.y) || 0) - (Number(attacker.y) || 0));
-    const range = (attacker.weapon === 2 ? 140 : 128) + 85;
+    const range = (attacker.weapon === 2 ? 140 : 128) + 120;
     if (dist > range) return;
     const weapon = attacker.weapon === 2 ? 2 : 1;
     const tier = Math.max(0, Math.min(5, Number(weapon === 2 ? attacker.swordTier : attacker.axeTier) || 0));
@@ -3274,13 +3275,12 @@ io.on('connection', (socket) => {
     const target = players.get(data.targetId);
     if (!attacker || !target || attacker.hp <= 0 || target.hp <= 0) return;
     if ((attacker.clanId && attacker.clanId === target.clanId) || (attacker.team && target.team && attacker.team === target.team)) return;
-    if (Number(attacker.weapon) !== 2) return;
     const distance = Math.hypot((Number(target.x) || 0) - (Number(attacker.x) || 0), (Number(target.y) || 0) - (Number(attacker.y) || 0));
-    if (distance > 520) return;
+    if (distance > 780) return;
     const now = Date.now();
-    if (now - (attacker.lastArrowAt || 0) < 350) return;
+    if (now - (attacker.lastArrowAt || 0) < 140) return;
     attacker.lastArrowAt = now;
-    const tier = Math.max(0, Math.min(5, Number(attacker.swordTier) || 0));
+    const tier = Math.max(0, Math.min(5, Number(attacker.axeTier ?? attacker.swordTier) || 0));
     const damage = Math.min(140, Math.max(1, Math.round((14 + tier * 6) * (Number(attacker.damageMultiplier) || 1))));
     applyPlayerDamage(target, damage);
     io.to(data.targetId).emit('pvp_hit', { dmg: damage, fromName: attacker.name || 'Oyuncu' });
@@ -3315,7 +3315,7 @@ io.on('connection', (socket) => {
     const target = players.get(data.targetId);
     const spike = buildings.get(String(data.bId || ''));
     if (!owner || !target || target.hp <= 0 || !spike || Number(spike.type) !== 3 || spike.ownerId !== socket.id || (spike.hp ?? 0) <= 0) return;
-    if (Math.hypot((Number(target.x) || 0) - Number(spike.x), (Number(target.y) || 0) - Number(spike.y)) > 90) return;
+    if (Math.hypot((Number(target.x) || 0) - Number(spike.x), (Number(target.y) || 0) - Number(spike.y)) > 110) return;
     if (owner && ((owner.clanId && owner.clanId === target.clanId) || (owner.team && target.team && owner.team === target.team))) return;
     const tier = Math.max(0, Math.min(5, Number(spike.tier) || 0));
     const damage = Math.min(180, Math.round(60 * [1, 1.15, 1.3, 1.5, 1.8, 2.2][tier]));

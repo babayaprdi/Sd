@@ -8689,9 +8689,9 @@ function updateArrows(){
     // with a bow. This adds the same arc check as turret projectiles (line 11748).
     if(!_aHit && _connected && _socket && _otherPlayers.size>0){
       _otherPlayers.forEach((tgt,tgtId)=>{
-        if(_aHit) return;
-        if(tgt.team && player.team && tgt.team===player.team) return;
-        const _opX=tgt._sx??tgt.x, _opY=tgt._sy??tgt.y;
+        if (_aHit) return;
+        if ((tgt.clanId && player.clanId && tgt.clanId === player.clanId) || (tgt.team && player.team && tgt.team === player.team)) return;
+        const _opX = tgt._sx ?? tgt.x, _opY = tgt._sy ?? tgt.y;
         const _aDx2=a.x-_opX, _aDy2=a.y-_opY;
         if(_aDx2*_aDx2+_aDy2*_aDy2<42*42){
           const _finalDmg=Math.round(a.dmg);
@@ -16904,27 +16904,27 @@ function initMultiplayer() {
 
   _socket.on('self_state', (s) => {
     if (!s) return;
+    // Server-authoritative economy and resources — always accept
+    if (typeof s.sc === 'number') player.score = Math.max(player.score || 0, s.sc);
+    if (typeof s.g === 'number') player.gold = Math.max(player.gold || 0, s.g);
+    if (typeof s.wood === 'number') player.wood = Math.max(player.wood || 0, s.wood);
+    if (typeof s.stone === 'number') player.stone = Math.max(player.stone || 0, s.stone);
+    if (typeof s.apples === 'number') player.apples = Math.max(player.apples || 0, s.apples);
+    updateUI();
+
     // High-latency packets can arrive out of order. Never let an older
     // reconciliation packet overwrite newer HP or position state.
     const acceptsHp = _acceptAuthoritativeHp(s);
+    if (acceptsHp) { player.hp = Math.max(0, s.hp); updateHpBar(); }
+    if (player.hp <= 0 && !_isDying) die();
+
     if (typeof s.seq === 'number' && s.seq < _mpLastAckedSeq && (_mpLastAckedSeq - s.seq < 500)) {
-      if (acceptsHp) { player.hp = Math.max(0, s.hp); updateHpBar(); }
       return;
     }
     // Acknowledge seq
     if (typeof s.seq === 'number') {
       _mpLastAckedSeq = s.seq;
     }
-    // Server-authoritative hp/xp/kills — always accept
-    if (acceptsHp) player.hp = Math.max(0, s.hp);
-    if (player.hp <= 0 && !_isDying) die();
-    if (typeof s.sc === 'number') player.score = Math.max(player.score || 0, s.sc);
-    // Gold and survival resources from server: monotonic protection against packet race
-    if (typeof s.g === 'number') player.gold = Math.max(player.gold || 0, s.g);
-    if (typeof s.wood === 'number') player.wood = Math.max(player.wood || 0, s.wood);
-    if (typeof s.stone === 'number') player.stone = Math.max(player.stone || 0, s.stone);
-    if (typeof s.apples === 'number') player.apples = Math.max(player.apples || 0, s.apples);
-    updateUI();
     // Reconcile if position diverges significantly (e.g. server collision push or lag spike)
     if (typeof s.x === 'number' && typeof s.y === 'number' && !player.dead && !_isDying) {
       const pDist = Math.hypot(s.x - player.x, s.y - player.y);
@@ -17424,19 +17424,21 @@ function initMultiplayer() {
 
   // ── Mob died — remove immediately, don't wait for next bulk tick ─────
   _socket.on('mob_dead', ({ id, killerId }) => {
-    if (killerId !== _mySocketId) return;
+    const isMyKill = (killerId === _mySocketId);
     const idx = enemies.findIndex(en => en._netId === id);
     if (idx !== -1) {
       const e = enemies[idx];
-      spawnBlood(e.x, e.y, 4); // was 12 — fewer particles = less CPU spike on rapid kills
-      spawnGoldBurst(e.x, e.y);
-      if (e.shape === 'wolf') _incQuestStat('wolves', 1);
-      else if (e.shape === 'bear') _incQuestStat('bears', 1);
-      else if (e.shape === 'scorpion') _incQuestStat('scorpions', 1);
-      else if (e.shape === 'spider') _incQuestStat('spiders', 1);
+      spawnBlood(e.x, e.y, 4);
+      if (isMyKill) {
+        spawnGoldBurst(e.x, e.y);
+        if (e.shape === 'wolf') _incQuestStat('wolves', 1);
+        else if (e.shape === 'bear') _incQuestStat('bears', 1);
+        else if (e.shape === 'scorpion') _incQuestStat('scorpions', 1);
+        else if (e.shape === 'spider') _incQuestStat('spiders', 1);
+      }
       enemies.splice(idx, 1);
     }
-    // Boss bar: hide if the boss was killed
+    // Boss bar: hide if the boss was killed (for all players)
     if (id === _serverBossId) _hideServerBossBar();
   });
 
