@@ -1011,11 +1011,16 @@ async function handleApi(request, response, requestPath) {
       sendJson(response, 200, { items: cosmeticCatalog.map(publicCosmetic), chests: Object.fromEntries(Object.entries(CHEST_CONFIG).map(([id, chest]) => [id, { cost: chest.cost, rewards: [...chest.rewards] }])) });
       return true;
     }
-    let body;
-    try { body = await readJson(request); } catch (_) { sendJson(response, 400, { error: 'Geçersiz kozmetik isteği.' }); return true; }
-    const itemId = String(body.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 48);
-    if (!itemId || !COSMETIC_TYPES.has(body.type) || !COSMETIC_RARITIES.has(body.rarity)) { sendJson(response, 400, { error: 'ID, tür veya rarity geçersiz.' }); return true; }
+
+    let body = {};
+    try { body = await readJson(request); } catch (_) {
+      if (request.method === 'DELETE') { body = {}; }
+      else { sendJson(response, 400, { error: 'Geçersiz kozmetik isteği.' }); return true; }
+    }
+
     if (request.method === 'DELETE') {
+      const itemId = String(body.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 48);
+      if (!itemId) { sendJson(response, 400, { error: 'ID gerekli.' }); return true; }
       const index = cosmeticCatalog.findIndex(item => item.id === itemId);
       if (index < 0) { sendJson(response, 404, { error: 'Kozmetik bulunamadı.' }); return true; }
       cosmeticCatalog.splice(index, 1);
@@ -1025,6 +1030,10 @@ async function handleApi(request, response, requestPath) {
       sendJson(response, 200, { ok: true });
       return true;
     }
+
+    const itemId = String(body.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 48);
+    if (!itemId || !COSMETIC_TYPES.has(body.type) || !COSMETIC_RARITIES.has(body.rarity)) { sendJson(response, 400, { error: 'ID, tür veya rarity geçersiz.' }); return true; }
+
     const item = { id: itemId, type: body.type, name: String(body.name || itemId).trim().slice(0, 40), rarity: body.rarity, color: String(body.color || '#b8f36b').slice(0, 20), asset: String(body.asset || `players/${itemId}.png`).trim().slice(0, 160), price: Math.max(0, Math.min(1000000, Number(body.price) || 0)), chests: Array.isArray(body.chests) ? body.chests.filter(chestId => Object.prototype.hasOwnProperty.call(CHEST_CONFIG, chestId)) : [], createdAt: Date.now() };
     const existing = cosmeticCatalog.findIndex(entry => entry.id === itemId);
     if (existing >= 0) cosmeticCatalog[existing] = item;
