@@ -16582,6 +16582,7 @@ function initMultiplayer() {
     const title = (rawTitle || (level === 'warning' ? 'SUNUCU UYARISI' : level === 'event' ? 'ÖZEL ETKİNLİK' : level === 'reward' ? 'ÖDÜL BİLDİRİMİ' : 'SUNUCU DUYURUSU')).toUpperCase();
     const icon = (data && data.icon) || (level === 'warning' ? '⚠️' : level === 'event' ? '🔥' : level === 'reward' ? '🎁' : '📢');
     const banner = document.getElementById('game-announce-banner');
+    const durationMs = Math.max(500, Math.min(3000, Number(data && data.durationMs) || 3000));
     if (banner) {
       banner.className = `show level-${level}`;
       const elTitle = document.getElementById('announce-title');
@@ -16594,8 +16595,8 @@ function initMultiplayer() {
       if (elTag) elTag.textContent = level === 'warning' ? 'UYARI' : level === 'event' ? 'ETKİNLİK' : level === 'reward' ? 'ÖDÜL' : 'DUYURU';
       if (_announceHideTimer) clearTimeout(_announceHideTimer);
       _announceHideTimer = setTimeout(() => {
-        banner.classList.remove('show');
-      }, 7500);
+        if (banner) banner.classList.remove('show');
+      }, durationMs);
     }
     pushKillFeed(`${icon} ${msg}`);
     showToast(msg, 5000, level === 'warning' ? '#ff4444' : level === 'event' ? '#ffaa00' : '#44aaff');

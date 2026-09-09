@@ -1378,9 +1378,10 @@ async function handleApi(request, response, requestPath) {
     const title = String(body.title || 'FORESTBRAWL DUYURUSU').trim().slice(0, 60);
     const level = ['info', 'warning', 'event', 'reward'].includes(body.level) ? body.level : 'info';
     const sound = ['bell', 'horn', 'fanfare', 'siren', 'none'].includes(body.sound) ? body.sound : 'bell';
+    const durationMs = Math.max(500, Math.min(3000, Number(body.durationMs ?? 3000)));
     adminConfig.announcement = message;
     saveAdminConfig();
-    ownerAudit('announcement_sent', { username: session.username, message, title, level, sound });
+    ownerAudit('announcement_sent', { username: session.username, message, title, level, sound, durationMs });
     io.emit('server_announce', {
       message,
       msg: message,
@@ -1388,10 +1389,11 @@ async function handleApi(request, response, requestPath) {
       title,
       level,
       sound,
+      durationMs,
       from: session.username.toUpperCase(),
       at: Date.now()
     });
-    sendJson(response, 200, { ok: true, message, title, level });
+    sendJson(response, 200, { ok: true, message, title, level, durationMs });
     return true;
   }
   if (requestPath === '/api/owner/player-action' && request.method === 'POST') {
