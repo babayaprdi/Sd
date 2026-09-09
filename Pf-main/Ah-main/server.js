@@ -1587,19 +1587,21 @@ const server = http.createServer((request, response) => {
 });
 
 function serveStatic(request, response, requestPath) {
-  if (requestPath === '/admin' || requestPath === '/admin/') {
-    response.writeHead(302, { Location: '/admin.html' });
-    response.end();
-    return;
-  }
-  if (requestPath === '/admin.html') {
-    requestPath = '/admin/index.html';
-  }
-  if (requestPath === '/admin.css') {
-    requestPath = '/admin/admin.css';
-  }
-  if (requestPath === '/admin.js') {
-    requestPath = '/admin/admin.js';
+  const adminAliasMap = {
+    '/admin': '/admin.html',
+    '/admin/': '/admin.html',
+    '/admin.html': '/admin/index.html',
+    '/admin.css': '/admin/admin.css',
+    '/admin.js': '/admin/admin.js',
+  };
+
+  if (adminAliasMap[requestPath]) {
+    if (requestPath === '/admin' || requestPath === '/admin/') {
+      response.writeHead(302, { Location: '/admin.html' });
+      response.end();
+      return;
+    }
+    requestPath = adminAliasMap[requestPath];
   }
 
   if (requestPath === '/.well-known/assetlinks.json' || requestPath === '/assetlinks.json') {
