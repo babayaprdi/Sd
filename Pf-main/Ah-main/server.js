@@ -1000,8 +1000,16 @@ async function handleApi(request, response, requestPath) {
     }
     let body;
     try { body = await readJson(request); } catch (_) { sendJson(response, 400, { error: 'Geçersiz istek.' }); return true; }
-    if (!timingSafeEqualText(body.username || '', ownerUsername) || !timingSafeEqualText(body.password || '', ownerPassword)) {
-      ownerAudit('owner_login_failed', { ip: requestClientKey(request) });
+    if (!body || typeof body !== 'object') {
+      sendJson(response, 400, { error: 'Geçersiz istek.' });
+      return true;
+    }
+    const incomingUsername = String(body.username || '').trim();
+    const incomingPassword = String(body.password || '');
+    const usernameMatches = timingSafeEqualText(incomingUsername, ownerUsername);
+    const passwordMatches = timingSafeEqualText(incomingPassword, ownerPassword);
+    if (!usernameMatches || !passwordMatches) {
+      ownerAudit('owner_login_failed', { ip: requestClientKey(request), username: incomingUsername });
       sendJson(response, 401, { error: 'Owner bilgileri geçersiz.' });
       return true;
     }
