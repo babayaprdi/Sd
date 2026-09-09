@@ -59,8 +59,6 @@ const parties = new Map();
 const clans = new Map();
 const sessions = new Map();
 const ownerSessions = new Map();
-const ownerUsername = String(process.env.OWNER_USERNAME || '').trim();
-const ownerPassword = String(process.env.OWNER_PASSWORD || '');
 const ownerSessionTtl = 12 * 60 * 60 * 1000;
 const ownerAuditLog = [];
 const adminConfig = {
@@ -71,6 +69,12 @@ const adminConfig = {
   resourceRespawnMultiplier: 1,
   announcement: ''
 };
+function getOwnerCredentials() {
+  return {
+    username: String(process.env.OWNER_USERNAME || '').trim().toLowerCase(),
+    password: String(process.env.OWNER_PASSWORD || '').trim()
+  };
+}
 function timingSafeEqualText(left, right) {
   const leftBuffer = Buffer.from(String(left));
   const rightBuffer = Buffer.from(String(right));
@@ -990,7 +994,8 @@ async function handleApi(request, response, requestPath) {
   if (request.method === 'OPTIONS') { response.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type, Authorization' }); response.end(); return true; }
   if (!requestPath.startsWith('/api/')) return false;
   if (requestPath === '/api/owner/login' && request.method === 'POST') {
-    if (!ownerUsername || !ownerPassword) {
+    const ownerCreds = getOwnerCredentials();
+    if (!ownerCreds.username || !ownerCreds.password) {
       sendJson(response, 503, { error: 'Owner hesabı yapılandırılmamış. OWNER_USERNAME ve OWNER_PASSWORD tanımlayın.' });
       return true;
     }
@@ -1006,18 +1011,18 @@ async function handleApi(request, response, requestPath) {
     }
     const incomingUsername = String(body.username || '').trim().toLowerCase();
     const incomingPassword = String(body.password || '').trim();
-    const usernameMatches = timingSafeEqualText(incomingUsername, String(ownerUsername || '').trim().toLowerCase());
-    const passwordMatches = timingSafeEqualText(incomingPassword, String(ownerPassword || ''));
+    const usernameMatches = timingSafeEqualText(incomingUsername, ownerCreds.username);
+    const passwordMatches = timingSafeEqualText(incomingPassword, ownerCreds.password);
     if (!usernameMatches || !passwordMatches) {
       ownerAudit('owner_login_failed', { ip: requestClientKey(request), username: incomingUsername });
       console.warn(`[OwnerLogin] denied ip=${requestClientKey(request)} username=${incomingUsername} usernameMatches=${usernameMatches} passwordMatches=${passwordMatches} passwordLength=${incomingPassword.length}`);
       sendJson(response, 401, { error: 'Owner bilgileri geçersiz.' });
       return true;
     }
-    const token = ownerTokenFor(ownerUsername);
-    ownerSessions.set(token, { username: ownerUsername, role: 'owner', createdAt: Date.now(), lastSeenAt: Date.now(), expiresAt: Date.now() + ownerSessionTtl });
-    ownerAudit('owner_login', { username: ownerUsername, ip: requestClientKey(request) });
-    sendJson(response, 200, { token, user: { username: ownerUsername, role: 'owner', expiresAt: Date.now() + ownerSessionTtl } });
+    const token = ownerTokenFor(ownerCreds.username);
+    ownerSessions.set(token, { username: ownerCreds.username, role: 'owner', createdAt: Date.now(), lastSeenAt: Date.now(), expiresAt: Date.now() + ownerSessionTtl });
+    ownerAudit('owner_login', { username: ownerCreds.username, ip: requestClientKey(request) });
+    sendJson(response, 200, { token, user: { username: ownerCreds.username, role: 'owner', expiresAt: Date.now() + ownerSessionTtl } });
     return true;
   }
   if (requestPath === '/api/owner/logout' && request.method === 'POST') {
