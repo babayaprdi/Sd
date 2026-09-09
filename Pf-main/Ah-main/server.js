@@ -73,10 +73,7 @@ function getOwnerCredentials() {
   loadDotEnv(path.join(__dirname, '.env'));
   const username = String(process.env.OWNER_USERNAME || 'owner').trim().toLowerCase();
   const password = String(process.env.OWNER_PASSWORD || 'admin').trim();
-  return {
-    username,
-    password
-  };
+  return { username, password };
 }
 function timingSafeEqualText(left, right) {
   const leftBuffer = Buffer.from(String(left));
@@ -1107,10 +1104,6 @@ async function handleApi(request, response, requestPath) {
   if (!requestPath.startsWith('/api/')) return false;
   if (requestPath === '/api/owner/login' && request.method === 'POST') {
     const ownerCreds = getOwnerCredentials();
-    if (!ownerCreds.username || !ownerCreds.password) {
-      sendJson(response, 503, { error: 'Owner hesabı yapılandırılmamış. OWNER_USERNAME ve OWNER_PASSWORD tanımlayın.' });
-      return true;
-    }
     if (authRateLimited(request, 'login')) {
       sendJson(response, 429, { error: 'Çok fazla deneme. Daha sonra tekrar deneyin.' });
       return true;
