@@ -6685,7 +6685,9 @@ invSlots.forEach((slot, index) => {
   const onSelect = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    _inventorySlotPlacementGuardUntil = Date.now() + 80;
+    // Keep the placement gate longer than the 80ms touch/mouse overlap window so
+    // an inventory tap does not accidentally flow into a build placement call.
+    _inventorySlotPlacementGuardUntil = Date.now() + 250;
     selectInventorySlot(index);
   };
   slot.addEventListener('touchstart', onSelect, { passive: false });
@@ -7177,7 +7179,10 @@ function drawBuildingConnections(visArr) {
 let _inventorySlotPlacementGuardUntil = 0;
 
 function tryPlaceBuilding() {
+  // Inventory slot picks and right-joystick aiming must not spawn a free build
+  // through a stale canvas / touch event in the next 100-250ms window.
   if (Date.now() < _inventorySlotPlacementGuardUntil) return;
+  if (_buildAimJoystickActive) return;
   if (player.weapon < 3) return;
 
   // ── BUILDING LIMIT CHECK ──
