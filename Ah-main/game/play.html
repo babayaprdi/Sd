@@ -10066,9 +10066,17 @@ function respawn() {
   if (typeof _spikeEnemyCooldowns !== 'undefined') _spikeEnemyCooldowns.clear();
   if (typeof _myTrapVictims !== 'undefined') _myTrapVictims.clear();
   if (typeof _pvpPredictTime !== 'undefined') _pvpPredictTime.clear();
-  player.wood = 0; player.stone = 0;
-  player.gold = 0; player.kills = 0; player.totalDmg = 0; player.score = 0;
-  player.xp = 0; player.apples = 5;
+  // Do not wipe persistent account/rank progression during a local respawn/restart.
+  // Keep the player's current account-backed progress and only clear the transient
+  // per-match values that should not survive a retry.
+  player.wood = Math.max(0, Number(player.wood) || 0);
+  player.stone = Math.max(0, Number(player.stone) || 0);
+  player.gold = Math.max(0, Number(player.gold) || 0);
+  player.kills = 0;
+  player.totalDmg = 0;
+  player.score = 0;
+  player.xp = Math.max(0, Number(player.xp) || 0);
+  player.apples = Math.max(5, Number(player.apples) || 5);
   player.speedBonus = 1; player.dmgBonus = 1; player.harvestBonus = 1;
   player.armorBonus = 0; player.atkSpdBonus = 1; player.regenBonus = 1;
   player.vampire = false; player._wideSwing = false;
