@@ -19,7 +19,7 @@ function loadDotEnv(filePath) {
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
       value = value.slice(1, -1);
     }
-    if (!process.env[key]) process.env[key] = value;
+    process.env[key] = value;
   }
 }
 
@@ -70,6 +70,7 @@ const adminConfig = {
   announcement: ''
 };
 function getOwnerCredentials() {
+  loadDotEnv(path.join(__dirname, '.env'));
   return {
     username: String(process.env.OWNER_USERNAME || '').trim().toLowerCase(),
     password: String(process.env.OWNER_PASSWORD || '').trim()
