@@ -1042,27 +1042,34 @@ function persistPlayerScore(player) {
 }
 
 function leaderboard(tab) {
+  const safeNumber = (value, fallback = 0) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  };
+
   if (tab === 'recent') {
     return (Array.isArray(accountData.recentDeaths) ? accountData.recentDeaths : []).map(entry => {
       const user = accountData.users?.[usernameKey(entry.name)];
       const currentRank = user ? rankInfo(user.xp || 0) : null;
+      const profileCosmetics = user ? {
+        avatarId: user.equippedItems?.profil_avatar || 'wolf',
+        skinId: user.equippedItems?.deriler || 'wolf',
+        effectId: user.equippedItems?.profil_efekt || user.equippedItems?.efektler || 'effect_none',
+        frameId: user.equippedItems?.profil_cerceve || 'frame_woodland'
+      } : (entry.profileCosmetics || { avatarId: 'wolf', effectId: 'effect_none', frameId: 'frame_woodland' });
+
       return {
         ...entry,
-        xp: user?.xp ?? Number(entry.xp || 0),
-        rankId: currentRank?.rankId ?? entry.rankId ?? 0,
+        xp: safeNumber(user?.xp ?? entry.xp ?? 0),
+        rankId: currentRank?.rankId ?? safeNumber(entry.rankId ?? 0),
         rankName: currentRank?.name || entry.rankName || 'Tohum',
-        level: currentRank?.level ?? (Number(entry.rankId || 0) + 1),
-        lastMatchAt: entry.lastMatchAt || entry.date || 0,
-        playerKills: Number(entry.playerKills ?? entry.kills ?? 0),
-        minutesAgo: entry.date ? Math.max(0, Math.floor((Date.now() - entry.date) / 60000)) : null,
-        profileCosmetics: user ? {
-          avatarId: user.equippedItems?.profil_avatar || 'wolf',
-          skinId: user.equippedItems?.deriler || 'wolf',
-          effectId: user.equippedItems?.profil_efekt || user.equippedItems?.efektler || 'effect_none',
-          frameId: user.equippedItems?.profil_cerceve || 'frame_woodland'
-        } : (entry.profileCosmetics || { avatarId: 'wolf', effectId: 'effect_none', frameId: 'frame_woodland' })
+        level: currentRank?.level ?? Math.max(1, safeNumber(entry.rankId ?? 0) + 1),
+        lastMatchAt: safeNumber(entry.lastMatchAt || entry.date || 0),
+        playerKills: safeNumber(entry.playerKills ?? entry.kills ?? 0),
+        minutesAgo: entry.date ? Math.max(0, Math.floor((Date.now() - safeNumber(entry.date)) / 60000)) : null,
+        profileCosmetics
       };
-    }).sort((a, b) => (b.lastMatchAt || 0) - (a.lastMatchAt || 0)).slice(0, 50).map((entry, index) => ({ ...entry, position: index + 1 }));
+    }).sort((a, b) => safeNumber(b.lastMatchAt) - safeNumber(a.lastMatchAt)).slice(0, 50).map((entry, index) => ({ ...entry, position: index + 1 }));
   }
 
   const allMap = new Map();
@@ -1073,18 +1080,18 @@ function leaderboard(tab) {
     const savedLeaderboardEntry = accountData.leaderboard?.[key];
     allMap.set(key, {
       name: user.username,
-      xp: Number(user.xp || 0),
-      score: Math.max(user.bestScore || 0, user.score || 0, user.gold || 0),
-      gold: Number(savedLeaderboardEntry?.gold ?? user.gold ?? user.coins ?? 0),
-      kills: Number(user.kills || 0),
-      playerKills: Number(user.kills || 0),
+      xp: safeNumber(user.xp || 0),
+      score: Math.max(safeNumber(user.bestScore), safeNumber(user.score), safeNumber(user.gold)),
+      gold: safeNumber(savedLeaderboardEntry?.gold ?? user.gold ?? user.coins ?? 0),
+      kills: safeNumber(user.kills || 0),
+      playerKills: safeNumber(user.kills || 0),
       rankId: rInfo.rankId,
       rankName: rInfo.name,
       level: rInfo.level,
-      lastDate: user.lastLoginAt || Date.now(),
-      lastMatchAt: user.lastMatchAt || user.lastLoginAt || user.createdAt || Date.now(),
-      gamesPlayed: Number(user.gamesPlayed || user.games || 0),
-      timePlayed: Number(user.timePlayed || 0),
+      lastDate: safeNumber(user.lastLoginAt || Date.now()),
+      lastMatchAt: safeNumber(user.lastMatchAt || user.lastLoginAt || user.createdAt || Date.now()),
+      gamesPlayed: safeNumber(user.gamesPlayed || user.games || 0),
+      timePlayed: safeNumber(user.timePlayed || 0),
       profileCosmetics: {
         avatarId: user.equippedItems?.profil_avatar || 'wolf',
         skinId: user.equippedItems?.deriler || 'wolf',
@@ -1098,27 +1105,36 @@ function leaderboard(tab) {
   // 2. Guest leaderboard records
   for (const [key, entry] of Object.entries(accountData.leaderboard || {})) {
     if (!allMap.has(key)) {
-      allMap.set(key, { ...entry });
+      allMap.set(key, {
+        ...entry,
+        xp: safeNumber(entry.xp || 0),
+        score: safeNumber(entry.score || 0),
+        gold: safeNumber(entry.gold || 0),
+        kills: safeNumber(entry.kills || 0),
+        playerKills: safeNumber(entry.playerKills ?? entry.kills ?? 0),
+        lastMatchAt: safeNumber(entry.lastMatchAt || entry.date || 0),
+        profileCosmetics: entry.profileCosmetics || { avatarId: 'wolf', effectId: 'effect_none', frameId: 'frame_woodland' }
+      });
     } else {
       const existing = allMap.get(key);
-      existing.score = Math.max(existing.score, entry.score || 0);
-      existing.xp = Math.max(existing.xp || 0, entry.xp || 0);
-      existing.gold = Math.max(existing.gold, entry.gold || 0);
-      existing.kills = Math.max(existing.kills, entry.kills || 0);
+      existing.score = Math.max(existing.score, safeNumber(entry.score || 0));
+      existing.xp = Math.max(existing.xp || 0, safeNumber(entry.xp || 0));
+      existing.gold = Math.max(existing.gold, safeNumber(entry.gold || 0));
+      existing.kills = Math.max(existing.kills, safeNumber(entry.kills || 0));
       existing.playerKills = existing.kills;
-      existing.lastMatchAt = Math.max(existing.lastMatchAt || 0, entry.lastMatchAt || 0);
+      existing.lastMatchAt = Math.max(existing.lastMatchAt || 0, safeNumber(entry.lastMatchAt || entry.date || 0));
     }
   }
 
   const list = [...allMap.values()];
-  if (tab === 'kills') list.sort((a, b) => (b.playerKills || b.kills || 0) - (a.playerKills || a.kills || 0));
-  else list.sort((a, b) => (b.gold || 0) - (a.gold || 0) || (b.score || 0) - (a.score || 0) || (b.xp || 0) - (a.xp || 0));
+  if (tab === 'kills') list.sort((a, b) => safeNumber(b.playerKills ?? b.kills ?? 0) - safeNumber(a.playerKills ?? a.kills ?? 0));
+  else list.sort((a, b) => safeNumber(b.gold) - safeNumber(a.gold) || safeNumber(b.score) - safeNumber(a.score) || safeNumber(b.xp) - safeNumber(a.xp));
+
   return list.slice(0, 50).map((entry, index) => ({
     ...entry,
     position: index + 1,
-    playerKills: Number(entry.playerKills ?? entry.kills ?? 0),
-    minutesAgo: entry.lastMatchAt ? Math.max(0, Math.floor((Date.now() - entry.lastMatchAt) / 60000)) : null,
-    profileCosmetics: entry.profileCosmetics || { avatarId: 'wolf', effectId: 'effect_none', frameId: 'frame_woodland' }
+    playerKills: safeNumber(entry.playerKills ?? entry.kills ?? 0),
+    minutesAgo: safeNumber(entry.lastMatchAt) ? Math.max(0, Math.floor((Date.now() - safeNumber(entry.lastMatchAt)) / 60000)) : null,
   }));
 }
 

@@ -5191,11 +5191,15 @@
             const container = document.getElementById('leaderboard-list');
             if (!container) return;
             container.innerHTML = '<div class="text-center text-white py-8 font-io text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Sıralama yükleniyor...</div>';
-            
+
             try {
                 const res = await fetch(`/api/leaderboard?tab=${_currentLbTab}`);
+                if (!res.ok) {
+                    throw new Error(`Leaderboard API returned ${res.status}`);
+                }
                 const data = await res.json();
-                _lbAllEntries = (data && data.entries) ? data.entries : [];
+                const entries = Array.isArray(data?.entries) ? data.entries : [];
+                _lbAllEntries = entries;
                 renderLeaderboardList();
             } catch (err) {
                 container.innerHTML = '<div class="text-center text-red-300 py-6 font-io text-xs">Sıralama verisi alınamadı. Sunucu bağlantısını kontrol edin.</div>';
