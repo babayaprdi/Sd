@@ -3259,7 +3259,8 @@ const playerName = urlParams.get('name') || 'Savaşçı';
 const _clanId = urlParams.get('clanId') || localStorage.getItem('fb_clan_id') || '';
 const _BASE = window.location.pathname.replace(/\/play\.html$/, '/') || '/';
 const _GAME_MODE = urlParams.get('mode') === 'offline' ? 'offline' : 'online';
-const _isMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.innerWidth < 900;
+const _isMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0) &&
+  (window.innerWidth < 1200 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches));
 const _lowPowerDevice = (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
   (navigator.deviceMemory && navigator.deviceMemory <= 4) || /Android\s+[1-7]|iPhone|iPad/i.test(navigator.userAgent);
 let ZOOM = _isMobile ? 0.50 : 0.62;
@@ -6239,6 +6240,7 @@ let _ping = 0;
 let _pingTimer = 0;
 let _stateTimer = 0;
 let _lastEmitX = 0, _lastEmitY = 0, _lastEmitAngle = 0, _lastEmitHp = 100, _lastEmitScore = 0, _lastEmitAttacking = false;
+let _lastEmitWeapon = 1, _lastEmitBx = null, _lastEmitBy = null;
 let _lastEmitVx = 0, _lastEmitVy = 0; // ② velocity change detection for delta emit
 let _chatInput = null;
 let _isDying = false; // guard against double-die (pvp_hit + pvp_killed race)
@@ -6378,26 +6380,28 @@ function drawWeaponAndHands(ctx, actor, isLocal, globalTime) {
 
   if (weapon === 1) {
     // ── BALTA (AXE) — Moomoo.io / Sploop.io 1:1 Stance & Boyut (Yukarı Hizalı) ──
-    const axeSkin = isLocal && playerAcc && playerAcc.baltalar && playerAcc.baltalar !== 'ba_none' ? playerAcc.baltalar : null;
+    const axeSkin = isLocal
+      ? (playerAcc && playerAcc.baltalar && playerAcc.baltalar !== 'ba_none' ? playerAcc.baltalar : null)
+      : (actor.axeSkin || (actor.acc && actor.acc.b && actor.acc.b !== 'ba_none' ? actor.acc.b : null));
     const axeTier = isLocal
       ? ((axeSkin && axeSkin.startsWith('ba_tier_')) ? Math.max(_wepTier(_axeXP), parseInt(axeSkin.replace('ba_tier_', '')) || 0) : _wepTier(_axeXP))
-      : (actor.axeTier ?? 0);
+      : (actor.axeTier ?? ((axeSkin && axeSkin.startsWith('ba_tier_')) ? parseInt(axeSkin.replace('ba_tier_', '')) || 0 : 0));
     const axeImg = _weaponSprite('axe', axeTier);
 
     // Balta ağzı öne (+X) doğru baksın, başı sola (+Y) uzansın (Ellerle tam ortalandı, yukarı alındı)
-    if (axeImg) {
-      ctx.save();
-      ctx.translate(30, -46);
-      ctx.scale(1.05, -1.05);
-      const pX = axeTier >= 2 ? 82 : 64;
-      ctx.drawImage(axeImg, -pX, -173);
-      ctx.restore();
-    } else if (axeSkin) {
+    if (axeSkin && !axeSkin.startsWith('ba_tier_')) {
       ctx.save();
       ctx.translate(30, -46);
       ctx.scale(1.15, -1.15);
       ctx.translate(-32, -37);
       drawAxeSkin(ctx, axeSkin, globalTime);
+      ctx.restore();
+    } else if (axeImg) {
+      ctx.save();
+      ctx.translate(30, -46);
+      ctx.scale(1.05, -1.05);
+      const pX = axeTier >= 2 ? 82 : 64;
+      ctx.drawImage(axeImg, -pX, -173);
       ctx.restore();
     } else {
       ctx.save();
@@ -6414,26 +6418,28 @@ function drawWeaponAndHands(ctx, actor, isLocal, globalTime) {
 
   } else if (weapon === 2) {
     // ── KILIÇ (SWORD) — Moomoo.io / Sploop.io 1:1 Stance & Büyütülmüş Boyut ──
-    const swordSkin = isLocal && playerAcc && playerAcc.kiliclar && playerAcc.kiliclar !== 'ki_none' ? playerAcc.kiliclar : null;
+    const swordSkin = isLocal
+      ? (playerAcc && playerAcc.kiliclar && playerAcc.kiliclar !== 'ki_none' ? playerAcc.kiliclar : null)
+      : (actor.swordSkin || (actor.acc && actor.acc.w && actor.acc.w !== 'ki_none' ? actor.acc.w : null));
     const swordTier = isLocal
       ? ((swordSkin && swordSkin.startsWith('ki_tier_')) ? Math.max(_wepTier(_swordXP), parseInt(swordSkin.replace('ki_tier_', '')) || 0) : _wepTier(_swordXP))
-      : (actor.swordTier ?? 0);
+      : (actor.swordTier ?? ((swordSkin && swordSkin.startsWith('ki_tier_')) ? parseInt(swordSkin.replace('ki_tier_', '')) || 0 : 0));
     const swordImg = _weaponSprite('sword', swordTier);
 
     // Kılıç: Namlu +Y (sola doğru), heybetli ve uzun boyut (1.05x ölçek)
-    if (swordImg) {
-      ctx.save();
-      ctx.translate(30, -28);
-      ctx.scale(1.05, -1.05);
-      const pX = swordTier === 5 ? 58.5 : 64;
-      ctx.drawImage(swordImg, -pX, -162);
-      ctx.restore();
-    } else if (swordSkin) {
+    if (swordSkin && !swordSkin.startsWith('ki_tier_')) {
       ctx.save();
       ctx.translate(30, -28);
       ctx.scale(1.15, -1.15);
       ctx.translate(-32, -27);
       drawSwordSkin(ctx, swordSkin, globalTime);
+      ctx.restore();
+    } else if (swordImg) {
+      ctx.save();
+      ctx.translate(30, -28);
+      ctx.scale(1.05, -1.05);
+      const pX = swordTier === 5 ? 58.5 : 64;
+      ctx.drawImage(swordImg, -pX, -162);
       ctx.restore();
     } else {
       ctx.save();
@@ -6492,18 +6498,19 @@ const SKIN_ARM_COLORS = {
   kiz_orman:'#78bc40',kiz_vampir:'#3a0050',kiz_neon:'#100820',
   kiz_samurai:'#4a0808',kiz_karanlik:'#150830',kiz_peri:'#ffb8cc',thor:'#d9e8ff'
 };
+const _initialWeapon = ((_urlWepSkin && _urlWepSkin.startsWith('ki_')) || (!_urlWepSkin && _shopAcc.kiliclar && _shopAcc.kiliclar !== 'ki_none' && (!_shopAcc.baltalar || _shopAcc.baltalar === 'ba_none'))) ? 2 : 1;
 const _spawn = randomForestPoint();
 const player = {
   name: playerName,
   clanId: _clanId,
   x: _spawn.x, y: _spawn.y, radius: 35, color: playerColor,
   angle: 0, bodyAngle: 0, weaponAngle: 0, vx: 0, vy: 0, momX: 0, momY: 0,
-  weapon: 1,
+  weapon: _initialWeapon,
   wood: 50, stone: 30, gold: 100, apples: 5,
   hp: 250, maxHp: 250, xp: Math.max(0, Number(_storedAuthUser?.xp || 0)),
   _fruitUseUntil: 0,
   isAttacking: false, attackHeld: false, attackTimer: 0,
-  attackDuration: ATTACK_DUR[1], swingAngle: 0,
+  attackDuration: ATTACK_DUR[_initialWeapon] || 300, swingAngle: 0,
   lastHitEnemyTime: 0,
   // Perk multipliers
   speedBonus: 1, dmgBonus: 1, harvestBonus: 1,
@@ -6511,6 +6518,12 @@ const player = {
   hitFlash: 0,
   kills: 0, totalDmg: 0, score: 0
 };
+if (_initialWeapon === 2) {
+  setTimeout(() => {
+    document.getElementById('slot-1')?.classList.remove('active');
+    document.getElementById('slot-2')?.classList.add('active');
+  }, 0);
+}
 let _wasAttacking = false; // edge-detect for immediate first-frame hit
 
 // ============================================================
@@ -6673,13 +6686,18 @@ const invSlots = document.querySelectorAll('.inv-slot');
 function selectInventorySlot(index) {
   if (index < 0 || index >= invSlots.length) return;
   const slotNum = index + 1;
+  const prevWeapon = player.weapon;
   player.weapon = slotNum;
-  player.attackDuration = ATTACK_DUR[slotNum] || 28;
+  player.attackDuration = ATTACK_DUR[slotNum] || (slotNum === 2 ? 280 : 300);
   player.attackHeld = false;
   player.isAttacking = false;
   player.attackTimer = 0;
   invSlots.forEach(s => s.classList.remove('active'));
   if (invSlots[index]) invSlots[index].classList.add('active');
+  if (prevWeapon !== slotNum && typeof _mpUpdate === 'function') {
+    _stateTimer = 999;
+    _mpUpdate();
+  }
 }
 invSlots.forEach((slot, index) => {
   const onSelect = (e) => {
@@ -7178,11 +7196,13 @@ function drawBuildingConnections(visArr) {
 
 let _inventorySlotPlacementGuardUntil = 0;
 
-function tryPlaceBuilding() {
+function tryPlaceBuilding(force = false) {
   // Inventory slot picks and right-joystick aiming must not spawn a free build
-  // through a stale canvas / touch event in the next 100-250ms window.
-  if (Date.now() < _inventorySlotPlacementGuardUntil) return;
-  if (_buildAimJoystickActive) return;
+  // through a stale canvas / touch event unless explicitly forced (e.g. on joystick release).
+  if (!force) {
+    if (Date.now() < _inventorySlotPlacementGuardUntil) return;
+    if (_buildAimJoystickActive) return;
+  }
   if (player.weapon < 3) return;
 
   // ── BUILDING LIMIT CHECK ──
@@ -7199,9 +7219,10 @@ function tryPlaceBuilding() {
   const radii = { 3:34, 4:44, 5:22, 6:32, 7:32, 8:20, 9:52, 10:28 };
   const [cW, cS, mHp] = costs[player.weapon] || [0,0,0];
 
-  // Use snapped position computed during last ghost preview frame
-  const bx = _ghostBuildPos ? _ghostBuildPos.x : player.x + Math.cos(player.angle) * 80;
-  const by = _ghostBuildPos ? _ghostBuildPos.y : player.y + Math.sin(player.angle) * 80;
+  // ALWAYS compute FRESH ghost position for the current angle and position!
+  const _freshGhost = _computeGhostPos();
+  const bx = _freshGhost ? _freshGhost.x : (player.x + Math.cos(player.angle) * 80);
+  const by = _freshGhost ? _freshGhost.y : (player.y + Math.sin(player.angle) * 80);
 
   // Block if overlapping an existing building — redirect to upgrade panel if own building
   const newR = _SNAP_RADII[player.weapon] || 30;
@@ -7211,24 +7232,19 @@ function tryPlaceBuilding() {
     const er = _SNAP_RADII[b.type] || 30;
     return Math.hypot(gx - b.x, gy - b.y) < newR + er - 4;
   }
-  function _findOwnBldAtGhost(gx, gy) {
-    for (const b of buildings) {
-      if (!_isOwnBuilding(b)) continue;
-      if (_bldOverlap(gx, gy, b)) return b;
-    }
-    return null;
-  }
-  if (_ghostBuildPos && _ghostBuildPos.blocked) {
+  if (_freshGhost && _freshGhost.blocked) {
     hideBuildUpgradePanel();
     floatingTexts.push({ x: player.x, y: player.y - 50, text: '⛔ ALAN DOLU!', alpha: 1, life: 35, color: '#ff4444' });
+    playSound(140, 0.1, 'sawtooth', 0.2);
     return;
   }
-  // Safety overlap check even without cached ghost (e.g. first frame)
+  // Safety overlap check
   for (const b of buildings) {
     if (b.hp <= 0) continue;
     if (_bldOverlap(bx, by, b)) {
       hideBuildUpgradePanel();
       floatingTexts.push({ x: player.x, y: player.y - 50, text: '⛔ ALAN DOLU!', alpha: 1, life: 35, color: '#ff4444' });
+      playSound(140, 0.1, 'sawtooth', 0.2);
       return;
     }
   }
@@ -7249,8 +7265,10 @@ function tryPlaceBuilding() {
     _queueBuildMetaUpdate(1);
     _mpBuildPlaced(newB, radii[player.weapon] || 34);
     updateUI();
+    playSound(480, 0.08, 'sine', 0.3);
   } else {
     floatingTexts.push({ x: player.x, y: player.y - 50, text: 'YETERSİZ KAYNAK!', alpha: 1, life: 35, color: '#ffaa00' });
+    playSound(180, 0.12, 'sawtooth', 0.2);
   }
 }
 
@@ -7619,9 +7637,10 @@ function setupJoy(zoneId, stickId, isMove) {
   }, { passive: false });
 
   const end = e => {
-    if (!active || e.pointerId !== currentId) return;
+    if (!active) return;
+    if (e && e.pointerId !== undefined && currentId !== null && e.pointerId !== currentId) return;
     active = false; currentId = null;
-    try { zone.releasePointerCapture(e.pointerId); } catch (_) {}
+    try { if (e && e.pointerId !== undefined) zone.releasePointerCapture(e.pointerId); } catch (_) {}
     zone.classList.remove('joy-active');
     // Reset stick and base back to zone center
     stick.style.left = '50%'; stick.style.top = '50%';
@@ -7637,18 +7656,26 @@ function setupJoy(zoneId, stickId, isMove) {
       _joystickActive = false;
     }
     else {
-      const doFruitUse = lastDist < 10 && !player.isAttacking && player.hp < player.maxHp && player.apples > 0 && (!player._fruitUseUntil || Date.now() >= player._fruitUseUntil);
+      _buildAimJoystickActive = false;
+      const doFruitUse = player.weapon < 3 && lastDist < 10 && !player.isAttacking && player.hp < player.maxHp && player.apples > 0 && (!player._fruitUseUntil || Date.now() >= player._fruitUseUntil);
       if (doFruitUse) {
         eatApple();
       }
-      _buildAimJoystickActive = false;
+      if (player.weapon >= 3) {
+        player.isAttacking = false;
+        tryPlaceBuilding(true);
+      }
       player.attackHeld = false;
-      if (player.weapon >= 3) player.isAttacking = false;
     }
   };
   zone.addEventListener('pointerup', end);
   zone.addEventListener('pointercancel', end);
   zone.addEventListener('lostpointercapture', e => { if (active) end(e); });
+  // Global release handlers: if user drags outside the zone and lifts finger, end() still fires reliably
+  window.addEventListener('pointerup', e => { if (active && (e.pointerId === currentId || currentId === null)) end(e); }, { passive: true });
+  window.addEventListener('pointercancel', e => { if (active && (e.pointerId === currentId || currentId === null)) end(e); }, { passive: true });
+  window.addEventListener('touchend', () => { if (active) end(); }, { passive: true });
+  window.addEventListener('touchcancel', () => { if (active) end(); }, { passive: true });
   if (!hasPointerEvents) {
     const touchPoint = e => e.changedTouches && e.changedTouches[0];
     zone.addEventListener('touchstart', e => {
@@ -9716,6 +9743,13 @@ function die() {
   // Add earned gold to shop balance
   const prevShopGold = parseInt(localStorage.getItem('fb_gold')||'1500',10);
   localStorage.setItem('fb_gold', prevShopGold + player.gold);
+  // Reset match resources upon death
+  player.wood = 0;
+  player.stone = 0;
+  player.gold = 0;
+  player.apples = 5;
+  player.score = 0;
+  updateUI();
   // ── Guest & User cumulative stat tracking ─────────
   const _dieAuthTok = localStorage.getItem('fb_auth_token') || '';
   const _dieTimePlayed = Math.floor(globalTime / 60); // seconds alive this session
@@ -10069,14 +10103,15 @@ function respawn() {
   // Do not wipe persistent account/rank progression during a local respawn/restart.
   // Keep the player's current account-backed progress and only clear the transient
   // per-match values that should not survive a retry.
-  player.wood = Math.max(0, Number(player.wood) || 0);
-  player.stone = Math.max(0, Number(player.stone) || 0);
-  player.gold = Math.max(0, Number(player.gold) || 0);
+  player.wood = 0;
+  player.stone = 0;
+  player.gold = 0;
   player.kills = 0;
   player.totalDmg = 0;
   player.score = 0;
-  player.xp = Math.max(0, Number(player.xp) || 0);
-  player.apples = Math.max(5, Number(player.apples) || 5);
+  player.xp = 0;
+  player.apples = 5;
+  updateUI();
   player.speedBonus = 1; player.dmgBonus = 1; player.harvestBonus = 1;
   player.armorBonus = 0; player.atkSpdBonus = 1; player.regenBonus = 1;
   player.vampire = false; player._wideSwing = false;
@@ -16023,9 +16058,18 @@ function _handleBuildInteraction(e) {
   _tryInitAudio();
   hideBuildUpgradePanel();
   player.attackHeld = true;
+  if (e && typeof e.clientX === 'number' && typeof e.clientY === 'number') {
+    if (typeof _screenToWorld === 'function') {
+      const wp = _screenToWorld(e.clientX, e.clientY);
+      player.angle = Math.atan2(wp.y - player.y, wp.x - player.x);
+      player.bodyAngle = player.angle;
+      player.weaponAngle = player.angle + (player.swingAngle || 0);
+    }
+  }
   if (player.weapon >= 3) {
     player.isAttacking = true;
-    tryPlaceBuilding();
+    _buildAimJoystickActive = false;
+    tryPlaceBuilding(true);
   } else if (!player.isAttacking) {
     playSwingAnimation(player);
     _mpSwing();
@@ -16050,7 +16094,6 @@ canvas.addEventListener('mouseup', e => {
 });
 window.addEventListener('pointerup', e => {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
-  if (e.target && e.target.closest && e.target.closest('#joy-right')) return;
   player.attackHeld = false;
   if (player.weapon >= 3) player.isAttacking = false;
 });
@@ -16149,11 +16192,15 @@ function initMultiplayer() {
     _socket.emit('ping_req', { t: performance.now() });
     const _initAxeTier = (playerAcc && playerAcc.baltalar && playerAcc.baltalar.startsWith('ba_tier_')) ? Math.max(_wepTier(_axeXP), parseInt(playerAcc.baltalar.replace('ba_tier_', '')) || 0) : _wepTier(_axeXP);
     const _initSwordTier = (playerAcc && playerAcc.kiliclar && playerAcc.kiliclar.startsWith('ki_tier_')) ? Math.max(_wepTier(_swordXP), parseInt(playerAcc.kiliclar.replace('ki_tier_', '')) || 0) : _wepTier(_swordXP);
+    const _initAxeSkin = (playerAcc && playerAcc.baltalar) || null;
+    const _initSwordSkin = (playerAcc && playerAcc.kiliclar) || null;
     const _authTok = localStorage.getItem('fb_auth_token') || '';
     _socket.emit('join', {
       guestId: _fbGuestId,
       name: player.name, skin: _playerSkin, color: playerColor,
+      weapon: player.weapon || 1,
       axeTier: _initAxeTier, swordTier: _initSwordTier,
+      axeSkin: _initAxeSkin, swordSkin: _initSwordSkin,
       x: player.x, y: player.y,
       hp: player.hp, maxHp: player.maxHp,
       xp: player.xp, gold: player.gold || 0,
@@ -16162,13 +16209,12 @@ function initMultiplayer() {
       clanId: _clanId,
       partyCode: urlParams.get('partyCode') || '',
       token: _authTok,
-      guestId: _fbGuestId,
       profileCosmetics: {
         avatarId: playerAcc.profil_avatar || localStorage.getItem('fb_profile_avatar') || _playerSkin || 'wolf',
         effectId: playerAcc.profil_efekt || playerAcc.efektler || localStorage.getItem('fb_effect') || 'effect_none',
         frameId: playerAcc.profil_cerceve || localStorage.getItem('fb_profile_frame') || 'frame_woodland'
       },
-      acc: { a: playerAcc.aksesuarlar, y: playerAcc.yuz, s: playerAcc.sapkalar, k: playerAcc.kanatlar },
+      acc: { a: playerAcc.aksesuarlar, y: playerAcc.yuz, s: playerAcc.sapkalar, k: playerAcc.kanatlar, b: _initAxeSkin, w: _initSwordSkin },
     });
   });
 
@@ -16220,6 +16266,10 @@ function initMultiplayer() {
         weapon: s.w ?? s.weapon ?? 1, isAttacking: false,
         kills: s.k ?? s.kills ?? 0, xp: s.xp ?? 0, gold: s.g ?? s.gold ?? 0, score: s.sc ?? s.score ?? 0,
         axeTier: s.at ?? s.axeTier ?? 0, swordTier: s.st ?? s.swordTier ?? 0,
+        axeSkin: s.axeSkin || (s.acc && s.acc.b) || null,
+        swordSkin: s.swordSkin || (s.acc && s.acc.w) || null,
+        buildX: (typeof s.bx === 'number') ? s.bx : (typeof s.buildX === 'number' ? s.buildX : null),
+        buildY: (typeof s.by === 'number') ? s.by : (typeof s.buildY === 'number' ? s.buildY : null),
         rankId: s.rk ?? s.rankId ?? 0, color: s.color || '#8B5E3A', team: s.team || '', clanId: s.clanId || '', clanTag: s.clanTag || '',
         acc: s.acc || {},
         _sx: s.x ?? 0, _sy: s.y ?? 0, _targetAngle: s.a ?? s.angle ?? 0,
@@ -16336,7 +16386,13 @@ function initMultiplayer() {
         if (s.team !== undefined) existing.team        = s.team;
         if (s.clanId !== undefined) existing.clanId     = s.clanId;
         if (s.clanTag !== undefined) existing.clanTag    = s.clanTag;
-        if (s.acc  !== undefined) existing.acc         = s.acc;
+        if (s.acc  !== undefined) {
+          existing.acc = s.acc;
+          if (s.acc && s.acc.b) existing.axeSkin = s.acc.b;
+          if (s.acc && s.acc.w) existing.swordSkin = s.acc.w;
+        }
+        if (s.axeSkin !== undefined) existing.axeSkin = s.axeSkin;
+        if (s.swordSkin !== undefined) existing.swordSkin = s.swordSkin;
         if (s.profileCosmetics !== undefined) existing.profileCosmetics = s.profileCosmetics;
         if (s.trappedBy !== undefined) {
           existing._trappedBy = s.trappedBy;
@@ -16357,6 +16413,8 @@ function initMultiplayer() {
           name: s.n, skin: s.sk, x: sx, y: sy, angle: sa, bodyAngle: sa, weaponAngle: sa, swingAngle: 0,
           hp: s.hp, maxHp: s.mhp, weapon: s.w, isAttacking: false, attackTimer: 0, attackDuration: 150,
           kills: s.k, xp: s.xp, gold: s.g || 0, score: s.sc || 0, axeTier: s.at || 0, swordTier: s.st || 0,
+          axeSkin: s.axeSkin || (s.acc && s.acc.b) || null,
+          swordSkin: s.swordSkin || (s.acc && s.acc.w) || null,
           rankId: s.rk ?? 0, clanId: s.clanId || '', clanTag: s.clanTag || '',
           acc: s.acc || {},
           profileCosmetics: s.profileCosmetics || { avatarId: 'wolf', effectId: 'effect_none', frameId: 'frame_woodland' },
@@ -16417,7 +16475,9 @@ function initMultiplayer() {
       hp: _pjS.hp ?? 100, maxHp: _pjS.mhp ?? _pjS.maxHp ?? 100, attackTimer: 0, attackDuration: 150,
       weapon: _pjS.w ?? _pjS.weapon ?? 1, isAttacking: false,
       kills: _pjS.k ?? 0, xp: _pjS.xp ?? 0, gold: _pjS.g ?? 0, score: _pjS.sc ?? 0,
-      axeTier: _pjS.at ?? 0, swordTier: _pjS.st ?? 0,
+      axeTier: _pjS.at ?? _pjS.axeTier ?? 0, swordTier: _pjS.st ?? _pjS.swordTier ?? 0,
+      axeSkin: _pjS.axeSkin || (_pjS.acc && _pjS.acc.b) || null,
+      swordSkin: _pjS.swordSkin || (_pjS.acc && _pjS.acc.w) || null,
       rankId: _pjS.rk ?? 0, color: _pjS.color || '#8B5E3A', team: _pjS.team || '', clanId: _pjS.clanId || '', clanTag: _pjS.clanTag || '',
       acc: _pjS.acc || {},
       profileCosmetics: _pjS.profileCosmetics || { avatarId: 'wolf', effectId: 'effect_none', frameId: 'frame_woodland' },
@@ -16914,12 +16974,12 @@ function initMultiplayer() {
 
   _socket.on('self_state', (s) => {
     if (!s) return;
-    // Server-authoritative economy and resources — always accept
-    if (typeof s.sc === 'number') player.score = Math.max(player.score || 0, s.sc);
-    if (typeof s.g === 'number') player.gold = Math.max(player.gold || 0, s.g);
-    if (typeof s.wood === 'number') player.wood = Math.max(player.wood || 0, s.wood);
-    if (typeof s.stone === 'number') player.stone = Math.max(player.stone || 0, s.stone);
-    if (typeof s.apples === 'number') player.apples = Math.max(player.apples || 0, s.apples);
+    // Server-authoritative economy and resources — always accept server updates
+    if (typeof s.sc === 'number') player.score = Math.max(0, s.sc);
+    if (typeof s.g === 'number') player.gold = Math.max(0, s.g);
+    if (typeof s.wood === 'number') player.wood = Math.max(0, s.wood);
+    if (typeof s.stone === 'number') player.stone = Math.max(0, s.stone);
+    if (typeof s.apples === 'number') player.apples = Math.max(0, s.apples);
     updateUI();
 
     // High-latency packets can arrive out of order. Never let an older
@@ -17534,7 +17594,9 @@ function initMultiplayer() {
       hp: _prS.hp ?? 100, maxHp: _prS.mhp ?? _prS.maxHp ?? 100,
       weapon: _prS.w ?? _prS.weapon ?? 1, isAttacking: _prS.atk ?? false,
       kills: _prS.k ?? 0, xp: _prS.xp ?? 0, gold: _prS.g ?? 0, score: _prS.sc ?? 0,
-      axeTier: _prS.at ?? 0, swordTier: _prS.st ?? 0,
+      axeTier: _prS.at ?? _prS.axeTier ?? 0, swordTier: _prS.st ?? _prS.swordTier ?? 0,
+      axeSkin: _prS.axeSkin || (_prS.acc && _prS.acc.b) || null,
+      swordSkin: _prS.swordSkin || (_prS.acc && _prS.acc.w) || null,
       rankId: _prS.rk ?? 0, color: _prS.color || '#8B5E3A', team: _prS.team || '',
       acc: _prS.acc || {},
       buildX: (typeof _prS.bx === 'number') ? _prS.bx : null,
@@ -17564,6 +17626,7 @@ function _setupInGameClan() {
   const status = (message) => { const el = document.getElementById('clan-game-status'); if (el) el.textContent = message || ''; };
   const render = (clan) => {
     _gameClan = clan; _gameClanOwner = clan.ownerId === _mySocketId || clan.ownerName === player.name;
+    if (player) { player.clanId = clan.id || ''; player.clanTag = clan.tag || ''; }
     button.innerHTML = `🛡️ [${clan.tag || 'KLAN'}] ${clan.name}`;
     document.getElementById('clan-game-empty').style.display = 'none';
     document.getElementById('clan-game-owned').style.display = 'block';
@@ -17575,6 +17638,7 @@ function _setupInGameClan() {
   };
   const showEmpty = () => {
     _gameClan = null;
+    if (player) { player.clanId = ''; player.clanTag = ''; }
     button.innerHTML = '🛡️ Klan (Oluştur / Katıl)';
     document.getElementById('clan-game-empty').style.display = 'block';
     document.getElementById('clan-game-owned').style.display = 'none';
@@ -17635,6 +17699,20 @@ function _mpUpdate() {
   if (!_connected || !_socket) return;
   if (_isDying) return; // dead — don't send stale positions
 
+  // Include build preview position so other players can see our ghost
+  let _emitBX = null, _emitBY = null;
+  if (player.weapon >= 3) {
+    const _freshGhost = _computeGhostPos();
+    _emitBX = _freshGhost.x; _emitBY = _freshGhost.y;
+  }
+  const dwep = player.weapon !== _lastEmitWeapon;
+  const dbx = _emitBX !== _lastEmitBx;
+  const dby = _emitBY !== _lastEmitBy;
+
+  if (dwep || dbx || dby) {
+    _stateTimer = 999; // force immediate packet if weapon or ghost moved
+  }
+
   // Emit at ~20-22Hz when moving/attacking (every 3 frames @ 60fps), every 8 frames idle (~7.5fps)
   // Matches server 25Hz tick loop perfectly and cuts unnecessary packet flooding.
   const _moving = Math.abs(player.vx||0) > 0.3 || Math.abs(player.vy||0) > 0.3 || player.isAttacking || player.weapon >= 3;
@@ -17649,23 +17727,22 @@ function _mpUpdate() {
     // ② Also trigger if velocity changed significantly (catches initial movement)
     const dvx = Math.abs((player.vx||0) - (_lastEmitVx||0));
     const dvy = Math.abs((player.vy||0) - (_lastEmitVy||0));
-    if (dx > 0.4 || dy > 0.4 || da > 0.006 || dhp > 0.5 || dsc >= 10 || dvx > 0.4 || dvy > 0.4 || player.isAttacking || player.isAttacking !== _lastEmitAttacking || player.weapon >= 3) {
+    if (dx > 0.4 || dy > 0.4 || da > 0.006 || dhp > 0.5 || dsc >= 10 || dvx > 0.4 || dvy > 0.4 || player.isAttacking || player.isAttacking !== _lastEmitAttacking || player.weapon >= 3 || dwep || dbx || dby) {
       _lastEmitX = player.x; _lastEmitY = player.y;
       _lastEmitAngle = player.angle; _lastEmitHp = player.hp; _lastEmitScore = player.score || 0;
       _lastEmitAttacking = player.isAttacking;
       _lastEmitVx = player.vx || 0; _lastEmitVy = player.vy || 0;
+      _lastEmitWeapon = player.weapon;
+      _lastEmitBx = _emitBX;
+      _lastEmitBy = _emitBY;
       // ⑤ CSP: record predicted position + increment seq
       const _curSeq = ++_mpSeq;
       _mpPredictedX = player.x; _mpPredictedY = player.y;
       // Include vx/vy so server can forward velocity for dead-reckoning
-      // Include build preview position so other players can see our ghost
-      let _emitBX = null, _emitBY = null;
-      if (player.weapon >= 3) {
-        const _freshGhost = _computeGhostPos();
-        _emitBX = _freshGhost.x; _emitBY = _freshGhost.y;
-      }
       const _effAxeTier = (playerAcc && playerAcc.baltalar && playerAcc.baltalar.startsWith('ba_tier_')) ? Math.max(_wepTier(_axeXP), parseInt(playerAcc.baltalar.replace('ba_tier_', '')) || 0) : _wepTier(_axeXP);
       const _effSwordTier = (playerAcc && playerAcc.kiliclar && playerAcc.kiliclar.startsWith('ki_tier_')) ? Math.max(_wepTier(_swordXP), parseInt(playerAcc.kiliclar.replace('ki_tier_', '')) || 0) : _wepTier(_swordXP);
+      const _effAxeSkin = (playerAcc && playerAcc.baltalar) || null;
+      const _effSwordSkin = (playerAcc && playerAcc.kiliclar) || null;
       const _statePayload = {
         x: player.x, y: player.y, angle: player.angle,
         vx: player.vx || 0, vy: player.vy || 0,
@@ -17676,15 +17753,17 @@ function _mpUpdate() {
         sc: player.score || 0,
         axeTier: _effAxeTier,
         swordTier: _effSwordTier,
+        axeSkin: _effAxeSkin,
+        swordSkin: _effSwordSkin,
         skin: _playerSkin,
         buildX: _emitBX, buildY: _emitBY,
         rankId: Math.min(typeof _myRankId !== 'undefined' ? _myRankId : 0, 11),
-        acc: { a: playerAcc.aksesuarlar, y: playerAcc.yuz, s: playerAcc.sapkalar, k: playerAcc.kanatlar },
+        acc: { a: playerAcc.aksesuarlar, y: playerAcc.yuz, s: playerAcc.sapkalar, k: playerAcc.kanatlar, b: _effAxeSkin, w: _effSwordSkin },
         seq: _curSeq, // ⑤ CSP seq for reconciliation
       };
       // Movement may drop packets safely; a build ghost must not blink out on a
       // busy connection, so send build-mode state reliably.
-      if (player.weapon >= 3) _socket.emit('state', _statePayload);
+      if (player.weapon >= 3 || dwep) _socket.emit('state', _statePayload);
       else _socket.volatile.emit('state', _statePayload);
     }
   }
@@ -17692,6 +17771,8 @@ function _mpUpdate() {
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && _connected && _socket && player && !player.dead) {
+    const _effAxeSkin = (playerAcc && playerAcc.baltalar) || null;
+    const _effSwordSkin = (playerAcc && playerAcc.kiliclar) || null;
     _socket.emit('state', {
       x: player.x, y: player.y, angle: player.angle,
       vx: 0, vy: 0, hp: player.hp, maxHp: player.maxHp,
@@ -17699,9 +17780,10 @@ document.addEventListener('visibilitychange', () => {
       kills: player.kills, xp: player.xp, gold: player.gold || 0,
       sc: player.score || 0,
       axeTier: _wepTier(_axeXP), swordTier: _wepTier(_swordXP),
+      axeSkin: _effAxeSkin, swordSkin: _effSwordSkin,
       skin: _playerSkin,
       rankId: Math.min(typeof _myRankId !== 'undefined' ? _myRankId : 0, 11),
-      acc: { a: playerAcc.aksesuarlar, y: playerAcc.yuz, s: playerAcc.sapkalar, k: playerAcc.kanatlar }
+      acc: { a: playerAcc.aksesuarlar, y: playerAcc.yuz, s: playerAcc.sapkalar, k: playerAcc.kanatlar, b: _effAxeSkin, w: _effSwordSkin }
     });
   }
 });
@@ -17719,6 +17801,8 @@ function _mpSwing() {
   _socket.emit('swing', {
     angle: player.angle, weapon: player.weapon,
     axeTier: _wepTier(_axeXP), swordTier: _wepTier(_swordXP),
+    axeSkin: (playerAcc && playerAcc.baltalar) || null,
+    swordSkin: (playerAcc && playerAcc.kiliclar) || null,
     x: player.x, y: player.y,
     dmg: _msDmg,
     range: _swingHitRange(),

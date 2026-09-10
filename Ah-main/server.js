@@ -2053,6 +2053,8 @@ function compactState(state, full = false) {
     res.clanTag = state.clanTag || '';
     res.acc = state.acc || {};
     res.profileCosmetics = state.profileCosmetics || null;
+    res.axeSkin = state.axeSkin || state.acc?.b || null;
+    res.swordSkin = state.swordSkin || state.acc?.w || null;
   }
   return res;
 }
@@ -2419,6 +2421,19 @@ function onPlayerDeath(playerId) {
   if (!playerId) return;
   releaseTrapVictim(playerId);
   deletePlayerBuildings(playerId);
+  const target = players.get(playerId);
+  if (target) {
+    target.wood = 0;
+    target.stone = 0;
+    target.gold = 0;
+    target.apples = 5;
+    target.score = 0;
+    target.sc = 0;
+    target._dead = true;
+    if (target._guestId) {
+      reconnectSessions.delete(target._guestId);
+    }
+  }
 }
 
 function releaseTrapVictim(playerId, trapId = null) {
@@ -2919,6 +2934,13 @@ io.on('connection', (socket) => {
       wood: 50,
       stone: 30,
       apples: 5,
+      weapon: Number(data.weapon) || 1,
+      axeTier: Number(data.axeTier) || 0,
+      swordTier: Number(data.swordTier) || 0,
+      axeSkin: data.axeSkin || data.acc?.b || null,
+      swordSkin: data.swordSkin || data.acc?.w || null,
+      buildX: typeof data.buildX === 'number' ? data.buildX : null,
+      buildY: typeof data.buildY === 'number' ? data.buildY : null,
       profileCosmetics: authUser?.equippedItems ? {
         avatarId: authUser.equippedItems.profil_avatar || 'wolf',
         effectId: authUser.equippedItems.profil_efekt || authUser.equippedItems.efektler || 'effect_none',
@@ -2931,14 +2953,16 @@ io.on('connection', (socket) => {
       _authUser: authUser
     };
     const reconnectSession = guestId ? reconnectSessions.get(guestId) : null;
-    if (reconnectSession && reconnectSession.savedAt > Date.now() - 60000) {
+    if (reconnectSession && reconnectSession.savedAt > Date.now() - 60000 && reconnectSession.state?.hp > 0 && !reconnectSession.state?._dead) {
       const saved = reconnectSession.state;
-      for (const key of ['x', 'y', 'angle', 'vx', 'vy', 'hp', 'maxHp', 'score', 'sc', 'gold', 'xp', 'kills', 'wood', 'stone', 'apples', 'weapon', 'axeTier', 'swordTier', 'team', 'color', 'skin']) {
+      for (const key of ['x', 'y', 'angle', 'vx', 'vy', 'hp', 'maxHp', 'score', 'sc', 'gold', 'xp', 'kills', 'wood', 'stone', 'apples', 'weapon', 'axeTier', 'swordTier', 'axeSkin', 'swordSkin', 'team', 'color', 'skin']) {
         if (saved[key] !== undefined) state[key] = saved[key];
       }
       for (const building of buildings.values()) {
         if (building.ownerId === reconnectSession.socketId) building.ownerId = socket.id;
       }
+      reconnectSessions.delete(guestId);
+    } else if (guestId) {
       reconnectSessions.delete(guestId);
     }
     const requestedClan = clans.get(String(data.clanId || ''));
@@ -2991,12 +3015,15 @@ io.on('connection', (socket) => {
         maxHp: 250,
         score: 0,
         sc: 0,
-        gold: authUser ? Math.max(0, Number(authUser.gold || authUser.coins) || 0) : 100,
+        gold: 0,
         xp: authUser?.xp || 0,
         kills: 0,
-        wood: 50,
-        stone: 30,
+        wood: 0,
+        stone: 0,
         apples: 5,
+        weapon: 1,
+        axeTier: 0,
+        swordTier: 0,
         skin: 'wolf',
         rk: rank.visualRankId,
         rankId: rank.rankId,
@@ -3015,6 +3042,7 @@ io.on('connection', (socket) => {
         stateSeq: 0,
         hpSeq: 0,
         stateAt: Date.now(),
+        _dead: false,
         _authUser: authUser
       };
       players.set(socket.id, player);
@@ -3026,22 +3054,25 @@ io.on('connection', (socket) => {
       player.vy = 0;
       player.score = 0;
       player.sc = 0;
-      player.gold = player._authUser ? Math.max(0, Number(player._authUser.gold || player._authUser.coins) || 0) : Math.max(0, Number(player.gold) || 100);
+      player.gold = 0;
       player.xp = player._authUser ? Math.max(0, Number(player._authUser.xp) || 0) : Math.max(0, Number(player.xp) || 0);
       player.rankId = player._authUser ? rankInfo(player.xp).rankId : player.rankId;
       player.rankName = player._authUser ? rankInfo(player.xp).name : player.rankName;
-      player.wood = Math.max(50, Number(player.wood) || 50);
-      player.stone = Math.max(30, Number(player.stone) || 30);
-      player.apples = Math.max(5, Number(player.apples) || 5);
+      player.wood = 0;
+      player.stone = 0;
+      player.apples = 5;
+      player.weapon = 1;
       player.trappedBy = null;
       player.stateSeq = 0;
       player.hpSeq = 0;
       player.hpAt = Date.now();
       player.visibleMobIds = new Set();
       player.stateAt = Date.now();
+      player._dead = false;
+      if (player._guestId) reconnectSessions.delete(player._guestId);
     }
     socket.emit('own_respawn', { x: spawnPt.x, y: spawnPt.y });
-    socket.emit('self_state', { x: spawnPt.x, y: spawnPt.y, hp: player.hp, hpSeq: 0, hpAt: player.hpAt, sc: player.score, g: player.gold, seq: 0 });
+    socket.emit('self_state', { x: spawnPt.x, y: spawnPt.y, hp: player.hp, hpSeq: 0, hpAt: player.hpAt, sc: player.score, g: player.gold, wood: player.wood, stone: player.stone, apples: player.apples, seq: 0 });
     io.emit('player_respawn', { id: socket.id, state: compactFullState(player) });
     broadcastOnlineCount();
   });
@@ -3110,16 +3141,21 @@ io.on('connection', (socket) => {
       data.vy = 0;
       needsPosCorrection = true;
     }
-    for (const key of ['x', 'y', 'angle', 'vx', 'vy', 'isAttacking', 'attackTimer', 'attackDuration', 'team', 'color', 'skin', 'acc', 'buildX', 'buildY']) {
+    for (const key of ['x', 'y', 'angle', 'vx', 'vy', 'isAttacking', 'attackTimer', 'attackDuration', 'team', 'color', 'skin', 'acc', 'buildX', 'buildY', 'weapon', 'axeTier', 'swordTier', 'axeSkin', 'swordSkin']) {
       if (key === 'x' && Number.isFinite(acceptedX)) player.x = acceptedX;
       else if (key === 'y' && Number.isFinite(acceptedY)) player.y = acceptedY;
       else if (key === 'skin' && data[key] !== undefined) player.skin = String(data[key]) === 'thor' && !canUseThor(player._authUser) ? 'wolf' : String(data[key]);
+      else if (key === 'weapon' && data[key] !== undefined) player.weapon = Number(data[key]) || 1;
+      else if (key === 'axeTier' && data[key] !== undefined) player.axeTier = Number(data[key]) || 0;
+      else if (key === 'swordTier' && data[key] !== undefined) player.swordTier = Number(data[key]) || 0;
       else if (data[key] !== undefined) player[key] = data[key];
     }
-    // Accept predicted client resource gathering monotonically
-    if (data.wood !== undefined) player.wood = Math.max(player.wood || 0, Number(data.wood) || 0);
-    if (data.stone !== undefined) player.stone = Math.max(player.stone || 0, Number(data.stone) || 0);
-    if (data.apples !== undefined) player.apples = Math.max(player.apples || 0, Number(data.apples) || 0);
+    // Accept predicted client resource gathering monotonically only if player is alive
+    if (!player._dead && (player.hp ?? 100) > 0) {
+      if (data.wood !== undefined) player.wood = Math.max(player.wood || 0, Number(data.wood) || 0);
+      if (data.stone !== undefined) player.stone = Math.max(player.stone || 0, Number(data.stone) || 0);
+      if (data.apples !== undefined) player.apples = Math.max(player.apples || 0, Number(data.apples) || 0);
+    }
     capturePlayerInTrap(player);
     resolveTrapOwnerCollisions(player);
 
@@ -3176,7 +3212,11 @@ io.on('connection', (socket) => {
       players.set(socket.id, attacker);
     }
     if ((attacker.hp ?? 250) <= 0) attacker.hp = 250;
-    const weapon = Number(attacker.weapon) === 2 ? 2 : 1;
+    const incomingWeapon = Number(data.weapon ?? attacker.weapon);
+    const weapon = incomingWeapon === 2 ? 2 : 1;
+    attacker.weapon = incomingWeapon;
+    if (data.axeTier !== undefined) attacker.axeTier = Number(data.axeTier) || 0;
+    if (data.swordTier !== undefined) attacker.swordTier = Number(data.swordTier) || 0;
     const now = Date.now();
     const swingCooldown = weapon === 2 ? 54 : 42;
     if (now - (attacker.lastSwingAt || 0) < swingCooldown) return;
@@ -3211,6 +3251,7 @@ io.on('connection', (socket) => {
     for (const [targetId, target] of players) {
       if (targetId === socket.id || target.hp <= 0) continue;
       if ((attacker.clanId && attacker.clanId === target.clanId) || (attacker.team && target.team && attacker.team === target.team)) continue;
+      if (swingId && target.lastHitSwingId === swingId) continue;
       const dx = (Number(target.x) || 0) - attackerX, dy = (Number(target.y) || 0) - attackerY;
       if (Math.hypot(dx, dy) > range + 56) continue;
       let difference = Math.abs(Math.atan2(dy, dx) - angle);
@@ -3567,7 +3608,14 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('chat', (data = {}) => io.emit('chat', { name: players.get(socket.id)?.name || 'Oyuncu', msg: String(data.msg || '').slice(0, 200), id: socket.id }));
+  socket.on('chat', (data = {}) => {
+    const now = Date.now();
+    if (now - (socket._lastChatAt || 0) < 500) return;
+    socket._lastChatAt = now;
+    const cleanMsg = String(data.msg || '').trim().slice(0, 120);
+    if (!cleanMsg) return;
+    io.emit('chat', { name: players.get(socket.id)?.name || 'Oyuncu', msg: cleanMsg, id: socket.id });
+  });
   socket.on('quick_chat', (data = {}) => {
     const player = players.get(socket.id);
     const idx = Number(data.idx);
@@ -3583,8 +3631,12 @@ io.on('connection', (socket) => {
   });
   socket.on('ping_req', (data) => socket.emit('pong_res', typeof data === 'object' && data ? data : { t: data }));
   // Death is emitted only by server-side damage handlers.
-  socket.on('player_dead', () => {});
-  socket.on('player_died', () => {});
+  socket.on('player_dead', () => {
+    onPlayerDeath(socket.id);
+  });
+  socket.on('player_died', () => {
+    onPlayerDeath(socket.id);
+  });
   socket.on('eat_apple', () => {
     const player = players.get(socket.id);
     if (player && player.hp > 0 && player.apples > 0 && Date.now() - (player.lastAppleAt || 0) >= 700 && player.hp < (player.maxHp ?? 250)) {
@@ -3690,9 +3742,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (data.wood !== undefined) owner.wood = Math.max(owner.wood || 0, Number(data.wood) || 0);
-    if (data.stone !== undefined) owner.stone = Math.max(owner.stone || 0, Number(data.stone) || 0);
-    if (data.gold !== undefined) owner.gold = Math.max(owner.gold || 0, Number(data.gold) || 0);
 
     const id = `${socket.id}-${crypto.randomBytes(6).toString('hex')}`;
     const building = normalizeBuilding({ ...data, type: bType }, { ...owner, id: socket.id }, id);
@@ -3748,6 +3797,10 @@ io.on('connection', (socket) => {
     const hp = Number(data.hp);
     const building = buildings.get(id);
     if (!building || !Number.isFinite(hp)) return;
+    const player = players.get(socket.id);
+    const isOwner = building.ownerId === socket.id;
+    const isClanOwner = player?.clanId && building.ownerClanId === player.clanId;
+    if (!isOwner && !isClanOwner) return; // Only owner or clan member can update building HP directly!
     building.hp = Math.max(0, Math.min(building.maxHp || 5000, hp));
     io.emit('build_hp_update', { id, hp: building.hp });
   });
@@ -3846,10 +3899,11 @@ io.on('connection', (socket) => {
     for (const key of mobHitCooldowns.keys()) if (key.startsWith(`${socket.id}:`)) mobHitCooldowns.delete(key);
     const player = players.get(socket.id);
     const guestId = String(player?._guestId || '').slice(0, 80);
-    if (player && guestId) {
+    if (player && guestId && player.hp > 0 && !player._dead) {
       reconnectSessions.set(guestId, { savedAt: Date.now(), socketId: socket.id, state: { ...player } });
     } else if (player) {
       onPlayerDeath(socket.id);
+      if (guestId) reconnectSessions.delete(guestId);
     }
     if (player && (player.score > 0 || player.gold > 0 || player.kills > 0)) {
       syncLivePlayerProgress(player);
